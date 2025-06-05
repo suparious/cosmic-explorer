@@ -58,7 +58,9 @@ class GameSession:
             "max_ship_condition": config.STARTING_SHIP_CONDITION,
             "fuel": config.STARTING_FUEL,
             "food": config.STARTING_FOOD,
-            "has_flight_pod": False
+            "has_flight_pod": False,
+            "pod_hp": 0,
+            "in_pod_mode": False  # True when ship destroyed, using pod
         }
         self.active_quest = None
         self.turn_count = 0

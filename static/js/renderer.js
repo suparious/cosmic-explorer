@@ -12,6 +12,7 @@ class Renderer {
         
         // Game objects
         this.ship = null;
+        this.playerAvatar = null;
         this.planets = [];
         this.stations = [];
         this.asteroids = [];
@@ -51,6 +52,16 @@ class Renderer {
             health: 100,
             condition: 100,
             hasPod: false
+        };
+        
+        // Initialize player avatar
+        this.playerAvatar = {
+            x: this.width / 2,
+            y: this.height / 2,
+            hasPod: false,
+            podHp: 0,
+            inPodMode: false,
+            animation: 0
         };
     }
     
@@ -125,6 +136,7 @@ class Renderer {
         this.renderStations();
         this.renderAsteroids();
         this.renderShip();
+        this.renderPlayerAvatar();
         this.renderParticles();
         
         // Restore context
