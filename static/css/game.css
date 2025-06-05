@@ -949,6 +949,56 @@ body {
     animation: heal-pulse 1s ease-in-out;
 }
 
+/* Ship Modal Styles */
+.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Make ship icon interactive */
+.ship-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+    padding: 2px;
+}
+
+.ship-icon:hover {
+    background: rgba(0, 255, 255, 0.2);
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    transform: scale(1.1);
+}
+
+/* Item action feedback */
+.inventory-item:active {
+    transform: scale(0.95);
+}
+
+/* Mod card disabled state */
+.mod-card.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.mod-card.disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Ship Type Indicator */
+.ship-type-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--primary-color);
+    border-radius: 20px;
+    font-size: 0.8rem;
+    color: var(--primary-color);
+    margin-top: 0.5rem;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .game-title {
@@ -972,5 +1022,22 @@ body {
     .action-panel {
         order: -1;
         max-width: 100%;
+    }
+    
+    .ship-modal-content {
+        max-width: 100%;
+        height: 90vh;
+    }
+    
+    .ship-overview {
+        grid-template-columns: 1fr;
+    }
+    
+    .slot-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .mod-grid {
+        grid-template-columns: 1fr;
     }
 }

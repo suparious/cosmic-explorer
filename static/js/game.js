@@ -246,8 +246,9 @@ class GameEngine {
     }
     
     showInventory() {
-        // TODO: Implement inventory modal
-        this.uiManager.showNotification('Inventory coming soon!', 'info');
+        // Open ship modal directly to inventory tab
+        this.uiManager.showShipModal();
+        setTimeout(() => this.uiManager.showShipTab('inventory'), 100);
     }
     
     showQuests() {

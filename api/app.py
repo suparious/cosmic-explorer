@@ -2,6 +2,7 @@
 """
 Flask API backend for Cosmic Explorer
 Provides REST endpoints and WebSocket support for the graphical frontend
+Enhanced with inventory system and ship customization
 """
 
 from flask import Flask, jsonify, request, render_template
@@ -12,6 +13,7 @@ import os
 import sys
 import threading
 import time
+import random
 
 # Add parent directory to path to import game modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -19,7 +21,334 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import config
 import game
 
-# Pod augmentation definitions
+# Ship type definitions
+SHIP_TYPES = {
+    "scout": {
+        "name": "Scout Vessel",
+        "description": "Fast and agile, perfect for exploration",
+        "cost": 400,
+        "max_hp": 80,
+        "cargo_capacity": 50,
+        "fuel_efficiency": 0.8,  # 20% better fuel efficiency
+        "speed": 1.2,  # 20% faster
+        "slots": {
+            "high": 2,
+            "mid": 3,
+            "low": 1,
+            "rig": 1
+        },
+        "icon": "🛸"
+    },
+    "trader": {
+        "name": "Merchant Cruiser",
+        "description": "Massive cargo hold for profitable trade runs",
+        "cost": 800,
+        "max_hp": 100,
+        "cargo_capacity": 200,
+        "fuel_efficiency": 1.2,  # 20% worse fuel efficiency
+        "speed": 0.8,  # 20% slower
+        "slots": {
+            "high": 1,
+            "mid": 2,
+            "low": 4,
+            "rig": 2
+        },
+        "icon": "🚢"
+    },
+    "combat": {
+        "name": "Combat Frigate",
+        "description": "Armed and armored for dangerous encounters",
+        "cost": 1200,
+        "max_hp": 150,
+        "cargo_capacity": 100,
+        "fuel_efficiency": 1.0,
+        "speed": 1.0,
+        "slots": {
+            "high": 4,
+            "mid": 2,
+            "low": 2,
+            "rig": 1
+        },
+        "icon": "⚔️"
+    },
+    "explorer": {
+        "name": "Explorer Class",
+        "description": "Versatile vessel for long-range expeditions",
+        "cost": 2000,
+        "max_hp": 120,
+        "cargo_capacity": 150,
+        "fuel_efficiency": 0.9,
+        "speed": 1.1,
+        "slots": {
+            "high": 3,
+            "mid": 3,
+            "low": 3,
+            "rig": 2
+        },
+        "icon": "🚀"
+    }
+}
+
+# Ship modification definitions
+SHIP_MODS = {
+    # High slot mods (weapons, mining, utilities)
+    "laser_cannon": {
+        "name": "Pulse Laser Cannon",
+        "description": "Basic energy weapon for defense",
+        "slot": "high",
+        "cost": 200,
+        "effects": {
+            "combat_power": 10
+        },
+        "icon": "⚡"
+    },
+    "missile_launcher": {
+        "name": "Missile Launcher",
+        "description": "Long-range explosive weapon",
+        "slot": "high",
+        "cost": 300,
+        "effects": {
+            "combat_power": 15
+        },
+        "icon": "🚀"
+    },
+    "mining_laser": {
+        "name": "Mining Laser",
+        "description": "Extract valuable resources from asteroids",
+        "slot": "high",
+        "cost": 250,
+        "effects": {
+            "mining_yield": 1.5
+        },
+        "icon": "⛏️"
+    },
+    "salvager": {
+        "name": "Salvage Scanner",
+        "description": "Recover valuable components from wrecks",
+        "slot": "high",
+        "cost": 350,
+        "effects": {
+            "salvage_chance": 0.3
+        },
+        "icon": "🔧"
+    },
+    
+    # Mid slot mods (shields, scanners, utilities)
+    "shield_booster": {
+        "name": "Shield Booster",
+        "description": "Increases maximum shields",
+        "slot": "mid",
+        "cost": 300,
+        "effects": {
+            "max_hp": 20
+        },
+        "icon": "🛡️"
+    },
+    "scanner_upgrade": {
+        "name": "Advanced Scanner",
+        "description": "Improved detection and analysis",
+        "slot": "mid",
+        "cost": 400,
+        "effects": {
+            "scan_bonus": 2.0
+        },
+        "icon": "📡"
+    },
+    "targeting_computer": {
+        "name": "Targeting Computer",
+        "description": "Improves weapon accuracy",
+        "slot": "mid",
+        "cost": 250,
+        "effects": {
+            "accuracy": 0.2
+        },
+        "icon": "🎯"
+    },
+    "afterburner": {
+        "name": "Afterburner Module",
+        "description": "Boost speed temporarily",
+        "slot": "mid",
+        "cost": 350,
+        "effects": {
+            "speed": 0.3
+        },
+        "icon": "🔥"
+    },
+    
+    # Low slot mods (armor, cargo, engineering)
+    "armor_plates": {
+        "name": "Reinforced Armor Plates",
+        "description": "Increases hull strength",
+        "slot": "low",
+        "cost": 250,
+        "effects": {
+            "max_hp": 30
+        },
+        "icon": "🪨"
+    },
+    "cargo_expander": {
+        "name": "Cargo Bay Extension",
+        "description": "Increases cargo capacity",
+        "slot": "low",
+        "cost": 200,
+        "effects": {
+            "cargo_capacity": 50
+        },
+        "icon": "📦"
+    },
+    "fuel_optimizer": {
+        "name": "Fuel Efficiency Module",
+        "description": "Reduces fuel consumption",
+        "slot": "low",
+        "cost": 300,
+        "effects": {
+            "fuel_efficiency": 0.8
+        },
+        "icon": "⚙️"
+    },
+    "repair_drones": {
+        "name": "Nanite Repair System",
+        "description": "Slowly repairs hull damage",
+        "slot": "low",
+        "cost": 500,
+        "effects": {
+            "hull_repair": 1
+        },
+        "icon": "🤖"
+    },
+    
+    # Rig slot mods (permanent modifications)
+    "cargo_rig": {
+        "name": "Cargo Optimization Rig",
+        "description": "Permanent cargo capacity increase",
+        "slot": "rig",
+        "cost": 600,
+        "effects": {
+            "cargo_capacity": 75
+        },
+        "permanent": True,
+        "icon": "🏗️"
+    },
+    "speed_rig": {
+        "name": "Engine Tuning Rig",
+        "description": "Permanent speed increase",
+        "slot": "rig",
+        "cost": 700,
+        "effects": {
+            "speed": 0.2,
+            "fuel_efficiency": 0.9
+        },
+        "permanent": True,
+        "icon": "⚡"
+    },
+    "shield_rig": {
+        "name": "Shield Matrix Rig",
+        "description": "Permanent shield enhancement",
+        "slot": "rig",
+        "cost": 800,
+        "effects": {
+            "max_hp": 40
+        },
+        "permanent": True,
+        "icon": "💠"
+    }
+}
+
+# Item type definitions
+ITEM_TYPES = {
+    # Trade goods
+    "rare_minerals": {
+        "name": "Rare Minerals",
+        "description": "Valuable ore samples",
+        "weight": 5,
+        "base_value": 50,
+        "category": "trade",
+        "icon": "💎"
+    },
+    "alien_artifacts": {
+        "name": "Alien Artifacts",
+        "description": "Mysterious ancient technology",
+        "weight": 2,
+        "base_value": 200,
+        "category": "trade",
+        "icon": "🗿"
+    },
+    "data_cores": {
+        "name": "Data Cores",
+        "description": "Encrypted information storage",
+        "weight": 1,
+        "base_value": 100,
+        "category": "trade",
+        "icon": "💾"
+    },
+    "luxury_goods": {
+        "name": "Luxury Goods",
+        "description": "High-end consumer products",
+        "weight": 3,
+        "base_value": 150,
+        "category": "trade",
+        "icon": "👑"
+    },
+    
+    # Consumables
+    "repair_nanobots": {
+        "name": "Repair Nanobots",
+        "description": "Restores 20 ship HP",
+        "weight": 3,
+        "base_value": 100,
+        "category": "consumable",
+        "effect": {"ship_condition": 20},
+        "icon": "🔧"
+    },
+    "fuel_cells": {
+        "name": "Emergency Fuel Cells",
+        "description": "Restores 30 fuel",
+        "weight": 10,
+        "base_value": 80,
+        "category": "consumable",
+        "effect": {"fuel": 30},
+        "icon": "🔋"
+    },
+    "shield_booster_charge": {
+        "name": "Shield Booster Charge",
+        "description": "Temporary +50 HP for 5 turns",
+        "weight": 5,
+        "base_value": 150,
+        "category": "consumable",
+        "effect": {"temp_hp": 50, "duration": 5},
+        "icon": "⚡"
+    },
+    
+    # Components
+    "quantum_processor": {
+        "name": "Quantum Processor",
+        "description": "Advanced computing component",
+        "weight": 1,
+        "base_value": 300,
+        "category": "component",
+        "icon": "🖥️"
+    },
+    "exotic_matter": {
+        "name": "Exotic Matter",
+        "description": "Strange material with unique properties",
+        "weight": 2,
+        "base_value": 500,
+        "category": "component",
+        "icon": "🌀"
+    },
+    
+    # Quest items (weightless)
+    "ancient_key": {
+        "name": "Ancient Key",
+        "description": "Opens sealed vaults",
+        "weight": 0,
+        "base_value": 0,
+        "category": "quest",
+        "icon": "🗝️"
+    }
+}
+
+# Pod augmentation definitions (kept from original)
 POD_AUGMENTATIONS = {
     "shield_boost": {
         "name": "Shield Boost Matrix",
@@ -52,19 +381,35 @@ POD_AUGMENTATIONS = {
 }
 
 # Web-compatible navigation function
-def web_navigation(player_stats, choice=None, augmentations=None):
+def web_navigation(player_stats, ship_type="scout", mods=None, augmentations=None):
     """Navigation function for web interface that doesn't use terminal input"""
     import random
     at_repair_location = False
     
     # Random choice if not specified
-    if choice is None:
-        choice = random.choice(['planet', 'route'])
+    choice = random.choice(['planet', 'route'])
     
-    # Calculate fuel consumption with augmentation effects
-    fuel_consumption = config.FUEL_CONSUMPTION_RATE
+    # Get ship stats
+    ship_info = SHIP_TYPES.get(ship_type, SHIP_TYPES["scout"])
+    
+    # Calculate fuel consumption with ship and mod effects
+    base_fuel = config.FUEL_CONSUMPTION_RATE
+    fuel_efficiency = ship_info["fuel_efficiency"]
+    
+    # Apply mod effects
+    if mods:
+        for slot_mods in mods.values():
+            for mod_id in slot_mods:
+                if mod_id in SHIP_MODS:
+                    mod_effects = SHIP_MODS[mod_id].get("effects", {})
+                    if "fuel_efficiency" in mod_effects:
+                        fuel_efficiency *= mod_effects["fuel_efficiency"]
+    
+    # Apply pod augmentation effects
     if augmentations and 'emergency_thrusters' in augmentations:
-        fuel_consumption = int(fuel_consumption * 0.8)  # 20% reduction
+        fuel_efficiency *= 0.8  # 20% reduction
+    
+    fuel_consumption = int(base_fuel * fuel_efficiency)
     
     if choice == 'planet':
         player_stats['ship_condition'] -= 5
@@ -93,15 +438,27 @@ class GameSession:
             "wealth": config.STARTING_WEALTH,
             "ship_condition": config.STARTING_SHIP_CONDITION,
             "max_ship_condition": config.STARTING_SHIP_CONDITION,
-            "base_max_ship_condition": config.STARTING_SHIP_CONDITION,  # Track base without augmentations
+            "base_max_ship_condition": config.STARTING_SHIP_CONDITION,
             "fuel": config.STARTING_FUEL,
             "food": config.STARTING_FOOD,
             "has_flight_pod": False,
             "pod_hp": 0,
-            "pod_max_hp": 30,  # Maximum pod HP
-            "pod_augmentations": [],  # List of installed augmentations
-            "in_pod_mode": False,  # True when ship destroyed, using pod
-            "pod_animation_state": "idle"  # idle, ejecting, active, damaged
+            "pod_max_hp": 30,
+            "pod_augmentations": [],
+            "in_pod_mode": False,
+            "pod_animation_state": "idle",
+            
+            # New ship and inventory system
+            "ship_type": "scout",
+            "ship_mods": {
+                "high": [],
+                "mid": [],
+                "low": [],
+                "rig": []
+            },
+            "inventory": [],  # List of {item_id, quantity}
+            "cargo_capacity": SHIP_TYPES["scout"]["cargo_capacity"],
+            "used_cargo_space": 0
         }
         self.active_quest = None
         self.turn_count = 0
@@ -111,22 +468,46 @@ class GameSession:
         self.current_event = None
         self.available_choices = []
         
+    def calculate_cargo_space(self):
+        """Calculate used cargo space from inventory"""
+        used_space = 0
+        for item in self.player_stats["inventory"]:
+            if item["item_id"] in ITEM_TYPES:
+                weight = ITEM_TYPES[item["item_id"]]["weight"]
+                used_space += weight * item["quantity"]
+        return used_space
+    
     def get_effective_stats(self):
-        """Calculate effective stats including pod augmentation bonuses"""
+        """Calculate effective stats including all modifications"""
         stats = self.player_stats.copy()
+        ship_info = SHIP_TYPES[self.player_stats["ship_type"]]
         
-        # Apply augmentation effects
+        # Base ship stats
+        stats["max_ship_condition"] = ship_info["max_hp"]
+        stats["cargo_capacity"] = ship_info["cargo_capacity"]
+        
+        # Apply ship mod effects
+        for slot_type, mods in self.player_stats["ship_mods"].items():
+            for mod_id in mods:
+                if mod_id in SHIP_MODS:
+                    effects = SHIP_MODS[mod_id].get("effects", {})
+                    
+                    if "max_hp" in effects:
+                        stats["max_ship_condition"] += effects["max_hp"]
+                    if "cargo_capacity" in effects:
+                        stats["cargo_capacity"] += effects["cargo_capacity"]
+        
+        # Apply pod augmentation effects
         if self.player_stats['has_flight_pod'] and not self.player_stats['in_pod_mode']:
             for aug_id in self.player_stats['pod_augmentations']:
                 if aug_id in POD_AUGMENTATIONS:
                     effects = POD_AUGMENTATIONS[aug_id]['effect']
                     
-                    # Shield boost
                     if 'max_ship_condition' in effects:
                         stats['max_ship_condition'] += effects['max_ship_condition']
-                        # Also boost current condition proportionally
-                        if stats['ship_condition'] == self.player_stats['max_ship_condition']:
-                            stats['ship_condition'] = stats['max_ship_condition']
+        
+        # Update cargo space
+        stats["used_cargo_space"] = self.calculate_cargo_space()
         
         return stats
     
@@ -142,7 +523,10 @@ class GameSession:
             "current_event": self.current_event,
             "available_choices": self.available_choices,
             "max_turns": config.MAX_TURNS,
-            "pod_augmentations_info": {aug_id: POD_AUGMENTATIONS[aug_id] for aug_id in self.player_stats.get('pod_augmentations', [])}
+            "pod_augmentations_info": {aug_id: POD_AUGMENTATIONS[aug_id] for aug_id in self.player_stats.get('pod_augmentations', [])},
+            "ship_types": SHIP_TYPES,
+            "ship_mods": SHIP_MODS,
+            "item_types": ITEM_TYPES
         }
 
 @app.route('/')
@@ -178,6 +562,34 @@ def get_game_state(session_id):
         
         session = game_sessions[session_id]
         return jsonify(session.to_dict())
+
+@app.route('/api/game/ship_info/<session_id>', methods=['GET'])
+def get_ship_info(session_id):
+    """Get detailed ship information"""
+    with game_lock:
+        if session_id not in game_sessions:
+            return jsonify({"error": "Session not found"}), 404
+        
+        session = game_sessions[session_id]
+        ship_type = session.player_stats["ship_type"]
+        ship_info = SHIP_TYPES[ship_type].copy()
+        
+        # Add equipped mods info
+        ship_info["equipped_mods"] = {}
+        for slot_type, mods in session.player_stats["ship_mods"].items():
+            ship_info["equipped_mods"][slot_type] = [
+                SHIP_MODS[mod_id] for mod_id in mods if mod_id in SHIP_MODS
+            ]
+        
+        # Add effective stats
+        effective_stats = session.get_effective_stats()
+        ship_info["effective_stats"] = {
+            "max_hp": effective_stats["max_ship_condition"],
+            "cargo_capacity": effective_stats["cargo_capacity"],
+            "used_cargo_space": effective_stats["used_cargo_space"]
+        }
+        
+        return jsonify(ship_info)
 
 @app.route('/api/game/action/<session_id>', methods=['POST'])
 def perform_action(session_id, action_type=None):
@@ -232,7 +644,30 @@ def process_action(session, action, choice=None, data=None):
             session.player_stats['in_pod_mode'] = True
             session.player_stats['pod_hp'] = session.player_stats['pod_max_hp']
             session.player_stats['pod_animation_state'] = "ejecting"
+            
+            # Lose most cargo
+            cargo_saved = []
+            if 'cargo_module' in session.player_stats.get('pod_augmentations', []):
+                # Save some valuable items
+                valuable_items = sorted(
+                    session.player_stats["inventory"],
+                    key=lambda x: ITEM_TYPES.get(x["item_id"], {}).get("base_value", 0) * x["quantity"],
+                    reverse=True
+                )
+                
+                pod_capacity = 10
+                used_space = 0
+                for item in valuable_items:
+                    item_weight = ITEM_TYPES[item["item_id"]]["weight"] * item["quantity"]
+                    if used_space + item_weight <= pod_capacity:
+                        cargo_saved.append(item)
+                        used_space += item_weight
+            
+            session.player_stats["inventory"] = cargo_saved
+            
             result['event'] = "Ship destroyed! Emergency pod activated. You have 30 HP to reach safety!"
+            if cargo_saved:
+                result['event'] += f" Managed to save {len(cargo_saved)} items in the pod."
             result['event_type'] = "pod_activated"
             result['choices'] = ["Navigate to nearest planet/outpost", "Try to send distress signal"]
             return result
@@ -289,125 +724,295 @@ def process_action(session, action, choice=None, data=None):
                 
             # Check if reached safety
             if session.at_repair_location:
-                result['choices'] = ["Buy new ship (400 wealth)", "Wait and conserve resources"]
+                result['choices'] = ["Buy new ship (400+ wealth)", "Wait and conserve resources"]
         else:
-            # Pass augmentations for fuel efficiency
+            # Pass ship type, mods, and augmentations for calculations
             session.at_repair_location, nav_message = web_navigation(
-                session.player_stats, 
+                session.player_stats,
+                ship_type=session.player_stats.get('ship_type', 'scout'),
+                mods=session.player_stats.get('ship_mods', {}),
                 augmentations=session.player_stats.get('pod_augmentations', [])
             )
             result['event'] = nav_message
             result['event_type'] = "navigation"
         
-    elif action == "quest":
-        if not session.active_quest:
-            # Web-compatible quest offering
-            quests = [
-                {"name": "Rescue Mission", "reward": 300, "risk": "health", "status": "Locate stranded crew", "reward_type": "wealth"},
-                {"name": "Artifact Hunt", "reward": 500, "risk": "ship_condition", "status": "Find ancient relic", "reward_type": "wealth"},
-                {"name": "Fuel Expedition", "reward": 50, "risk": "fuel", "status": "Secure fuel reserves", "reward_type": "fuel"},
-                {"name": "Diplomatic Encounter", "reward": 200, "risk": "health", "status": "Negotiate with alien leaders", "reward_type": "wealth"}
-            ]
-            quest = random.choice(quests)
-            session.active_quest = quest
-            result['event'] = f"New quest available: {quest['name']} - {quest['status']}. Reward: {quest['reward']} {quest['reward_type']}"
-            result['event_type'] = "quest"
-                
     elif action == "event":
-        # Web-compatible random event
-        events = [
-            ("Encounter alien traders", "wealth", 100, "You trade successfully! Wealth increased."),
-            ("Hit by cosmic anomaly", "ship_condition", -20, "Your ship takes damage! Ship condition decreased."),
-            ("Discover abandoned ship", "wealth", 150, "You salvage resources! Wealth increased."),
-            ("Navigate through asteroid field", "fuel", -10, "Maneuvering consumes extra fuel! Fuel decreased."),
-            ("Find a fuel depot", "fuel", 30, "You refuel your ship! Fuel increased."),
-            ("Face pirate ambush", "health", -25, "Pirates attack! Health decreased."),
-            ("Discover cosmic phenomenon", "wealth", 80, "You document a rare event! Wealth increased."),
-            ("Receive distress call", "ship_condition", -15, "Helping out strains your ship! Ship condition decreased."),
-            ("Discover food supplies", "food", 20, "You find edible resources! Food supplies increased."),
-            ("Stumble upon hidden fuel cache", "fuel", 15, "You uncover extra fuel reserves! Fuel increased.")
-        ]
-        event, stat, change, message = random.choice(events)
+        # Enhanced random events that can give items
+        event_roll = random.random()
         
-        # Apply scanner array bonus to positive wealth events
-        if stat == "wealth" and change > 0 and 'scanner_array' in session.player_stats.get('pod_augmentations', []):
-            change = int(change * 2)
-            message += " (Scanner Array bonus!)"
-        
-        session.player_stats[stat] += change
-        result['event'] = f"{event} - {message}"
-        result['event_type'] = "random_event" if change < 0 else "success"
+        if event_roll < 0.3:  # 30% chance of item event
+            # Item-based events
+            item_events = [
+                ("Discover abandoned cargo", "rare_minerals", 3, "You find valuable minerals floating in space!"),
+                ("Salvage operation", "data_cores", 2, "You recover encrypted data cores from a wreck!"),
+                ("Trading opportunity", "luxury_goods", 1, "A merchant gifts you luxury goods as a sample!"),
+                ("Ancient ruins", "alien_artifacts", 1, "You discover a mysterious alien artifact!"),
+                ("Emergency supplies", "repair_nanobots", 2, "You find emergency repair supplies!")
+            ]
+            
+            event, item_id, quantity, message = random.choice(item_events)
+            
+            # Check cargo space
+            item_weight = ITEM_TYPES[item_id]["weight"] * quantity
+            effective_stats = session.get_effective_stats()
+            available_space = effective_stats["cargo_capacity"] - effective_stats["used_cargo_space"]
+            
+            if item_weight <= available_space:
+                # Add item to inventory
+                existing_item = next((item for item in session.player_stats["inventory"] if item["item_id"] == item_id), None)
+                if existing_item:
+                    existing_item["quantity"] += quantity
+                else:
+                    session.player_stats["inventory"].append({"item_id": item_id, "quantity": quantity})
+                
+                result['event'] = f"{event} - {message} (+{quantity} {ITEM_TYPES[item_id]['name']})"
+                result['event_type'] = "success"
+            else:
+                result['event'] = f"{event} - But your cargo hold is too full! You had to leave it behind."
+                result['event_type'] = "info"
+        else:
+            # Standard stat-based events
+            events = [
+                ("Encounter alien traders", "wealth", 100, "You trade successfully! Wealth increased."),
+                ("Hit by cosmic anomaly", "ship_condition", -20, "Your ship takes damage! Ship condition decreased."),
+                ("Navigate through asteroid field", "fuel", -10, "Maneuvering consumes extra fuel! Fuel decreased."),
+                ("Find a fuel depot", "fuel", 30, "You refuel your ship! Fuel increased."),
+                ("Face pirate ambush", "health", -25, "Pirates attack! Health decreased."),
+                ("Discover food supplies", "food", 20, "You find edible resources! Food supplies increased.")
+            ]
+            event, stat, change, message = random.choice(events)
+            
+            # Apply scanner bonuses
+            if stat == "wealth" and change > 0:
+                # Check for scanner array pod augmentation
+                if 'scanner_array' in session.player_stats.get('pod_augmentations', []):
+                    change = int(change * 2)
+                    message += " (Scanner Array bonus!)"
+                
+                # Check for scanner ship mod
+                for mods in session.player_stats["ship_mods"].values():
+                    if "scanner_upgrade" in mods:
+                        change = int(change * 1.5)
+                        message += " (Ship Scanner bonus!)"
+            
+            session.player_stats[stat] += change
+            result['event'] = f"{event} - {message}"
+            result['event_type'] = "random_event" if change < 0 else "success"
         
     elif action == "repair":
         if session.at_repair_location and session.player_stats['wealth'] >= 100:
             session.player_stats['wealth'] -= 100
-            session.player_stats['ship_condition'] = session.player_stats['max_ship_condition']
+            session.player_stats['ship_condition'] = session.get_effective_stats()['max_ship_condition']
             result['event'] = "Ship repaired!"
             result['event_type'] = "repair"
         else:
             result['event'] = "Cannot repair ship here or insufficient wealth."
             result['event_type'] = "error"
             
-    elif action == "upgrade":
-        if session.player_stats['wealth'] >= 300:
-            session.player_stats['wealth'] -= 300
-            session.player_stats['max_ship_condition'] += 20
-            session.player_stats['ship_condition'] = session.player_stats['max_ship_condition']
-            result['event'] = "Ship upgraded!"
-            result['event_type'] = "upgrade"
-        else:
-            result['event'] = "Insufficient wealth for upgrade."
+    elif action == "buy_ship":
+        ship_type = data.get('ship_type', 'scout') if data else 'scout'
+        
+        if ship_type not in SHIP_TYPES:
+            result['event'] = "Invalid ship type."
             result['event_type'] = "error"
+        elif session.player_stats['wealth'] < SHIP_TYPES[ship_type]['cost']:
+            result['event'] = f"Insufficient wealth. Need {SHIP_TYPES[ship_type]['cost']}."
+            result['event_type'] = "error"
+        elif not session.at_repair_location:
+            result['event'] = "Must be at a repair location to buy a ship."
+            result['event_type'] = "error"
+        else:
+            ship_info = SHIP_TYPES[ship_type]
+            session.player_stats['wealth'] -= ship_info['cost']
+            session.player_stats['ship_type'] = ship_type
+            session.player_stats['ship_condition'] = ship_info['max_hp']
+            session.player_stats['max_ship_condition'] = ship_info['max_hp']
+            session.player_stats['base_max_ship_condition'] = ship_info['max_hp']
+            session.player_stats['cargo_capacity'] = ship_info['cargo_capacity']
             
+            # Reset mods for new ship
+            session.player_stats['ship_mods'] = {
+                "high": [],
+                "mid": [],
+                "low": [],
+                "rig": []
+            }
+            
+            # Exit pod mode if applicable
+            if session.player_stats['in_pod_mode']:
+                session.player_stats['in_pod_mode'] = False
+                session.player_stats['has_flight_pod'] = False
+                session.player_stats['pod_hp'] = 0
+                session.player_stats['pod_augmentations'] = []
+                session.player_stats['pod_animation_state'] = "idle"
+            
+            result['event'] = f"{ship_info['icon']} {ship_info['name']} purchased! {ship_info['description']}"
+            result['event_type'] = "purchase"
+            
+    elif action == "buy_mod":
+        mod_id = data.get('mod_id') if data else None
+        
+        if not mod_id or mod_id not in SHIP_MODS:
+            result['event'] = "Invalid modification."
+            result['event_type'] = "error"
+        elif not session.at_repair_location:
+            result['event'] = "Must be at a repair location to install modifications."
+            result['event_type'] = "error"
+        else:
+            mod_info = SHIP_MODS[mod_id]
+            slot_type = mod_info['slot']
+            ship_info = SHIP_TYPES[session.player_stats['ship_type']]
+            
+            # Check if ship has available slot
+            current_mods_in_slot = len(session.player_stats['ship_mods'][slot_type])
+            max_slots = ship_info['slots'][slot_type]
+            
+            if current_mods_in_slot >= max_slots:
+                result['event'] = f"No available {slot_type} slots on your {ship_info['name']}."
+                result['event_type'] = "error"
+            elif session.player_stats['wealth'] < mod_info['cost']:
+                result['event'] = f"Insufficient wealth. Need {mod_info['cost']}."
+                result['event_type'] = "error"
+            else:
+                # Purchase and install mod
+                session.player_stats['wealth'] -= mod_info['cost']
+                session.player_stats['ship_mods'][slot_type].append(mod_id)
+                
+                result['event'] = f"{mod_info['icon']} {mod_info['name']} installed! {mod_info['description']}"
+                result['event_type'] = "purchase"
+                
+    elif action == "remove_mod":
+        mod_id = data.get('mod_id') if data else None
+        slot_type = data.get('slot_type') if data else None
+        
+        if not mod_id or not slot_type:
+            result['event'] = "Invalid modification removal request."
+            result['event_type'] = "error"
+        elif not session.at_repair_location:
+            result['event'] = "Must be at a repair location to remove modifications."
+            result['event_type'] = "error"
+        elif mod_id not in session.player_stats['ship_mods'][slot_type]:
+            result['event'] = "Modification not installed."
+            result['event_type'] = "error"
+        else:
+            mod_info = SHIP_MODS[mod_id]
+            
+            # Check if it's a permanent rig
+            if mod_info.get('permanent', False):
+                result['event'] = "Rig modifications are permanent and cannot be removed."
+                result['event_type'] = "error"
+            else:
+                # Remove mod
+                session.player_stats['ship_mods'][slot_type].remove(mod_id)
+                
+                # Refund 50% of cost
+                refund = mod_info['cost'] // 2
+                session.player_stats['wealth'] += refund
+                
+                result['event'] = f"{mod_info['name']} removed. Received {refund} credits as salvage value."
+                result['event_type'] = "info"
+                
+    elif action == "use_item":
+        item_id = data.get('item_id') if data else None
+        
+        if not item_id:
+            result['event'] = "No item specified."
+            result['event_type'] = "error"
+        else:
+            # Find item in inventory
+            inventory_item = next((item for item in session.player_stats["inventory"] if item["item_id"] == item_id), None)
+            
+            if not inventory_item:
+                result['event'] = "Item not in inventory."
+                result['event_type'] = "error"
+            elif item_id not in ITEM_TYPES:
+                result['event'] = "Unknown item type."
+                result['event_type'] = "error"
+            else:
+                item_info = ITEM_TYPES[item_id]
+                
+                if item_info['category'] != 'consumable':
+                    result['event'] = "This item cannot be used directly."
+                    result['event_type'] = "error"
+                else:
+                    # Apply item effect
+                    effects = item_info.get('effect', {})
+                    
+                    if 'ship_condition' in effects:
+                        old_hp = session.player_stats['ship_condition']
+                        max_hp = session.get_effective_stats()['max_ship_condition']
+                        session.player_stats['ship_condition'] = min(
+                            session.player_stats['ship_condition'] + effects['ship_condition'],
+                            max_hp
+                        )
+                        actual_heal = session.player_stats['ship_condition'] - old_hp
+                        result['event'] = f"Used {item_info['name']}. Ship repaired by {actual_heal} HP!"
+                        result['event_type'] = "heal"
+                    
+                    elif 'fuel' in effects:
+                        old_fuel = session.player_stats['fuel']
+                        session.player_stats['fuel'] = min(
+                            session.player_stats['fuel'] + effects['fuel'],
+                            100
+                        )
+                        actual_fuel = session.player_stats['fuel'] - old_fuel
+                        result['event'] = f"Used {item_info['name']}. Gained {actual_fuel} fuel!"
+                        result['event_type'] = "success"
+                    
+                    # Remove one item from inventory
+                    inventory_item['quantity'] -= 1
+                    if inventory_item['quantity'] <= 0:
+                        session.player_stats["inventory"].remove(inventory_item)
+                        
+    elif action == "sell_item":
+        item_id = data.get('item_id') if data else None
+        quantity = data.get('quantity', 1) if data else 1
+        
+        if not session.at_repair_location:
+            result['event'] = "Must be at a trading location to sell items."
+            result['event_type'] = "error"
+        elif not item_id:
+            result['event'] = "No item specified."
+            result['event_type'] = "error"
+        else:
+            # Find item in inventory
+            inventory_item = next((item for item in session.player_stats["inventory"] if item["item_id"] == item_id), None)
+            
+            if not inventory_item:
+                result['event'] = "Item not in inventory."
+                result['event_type'] = "error"
+            elif inventory_item['quantity'] < quantity:
+                result['event'] = f"Insufficient quantity. You have {inventory_item['quantity']}."
+                result['event_type'] = "error"
+            else:
+                item_info = ITEM_TYPES[item_id]
+                
+                # Calculate price with some variance
+                base_price = item_info['base_value']
+                price_variance = random.uniform(0.8, 1.2)
+                sell_price = int(base_price * price_variance * quantity)
+                
+                # Complete sale
+                session.player_stats['wealth'] += sell_price
+                inventory_item['quantity'] -= quantity
+                if inventory_item['quantity'] <= 0:
+                    session.player_stats["inventory"].remove(inventory_item)
+                
+                result['event'] = f"Sold {quantity} {item_info['name']} for {sell_price} credits!"
+                result['event_type'] = "success"
+    
+    # Keep original pod-related actions
     elif action == "buy_pod":
         if session.player_stats['wealth'] >= 500 and not session.player_stats['has_flight_pod']:
             session.player_stats['wealth'] -= 500
             session.player_stats['has_flight_pod'] = True
-            session.player_stats['pod_hp'] = session.player_stats['pod_max_hp']  # Initialize pod HP to maximum
-            session.player_stats['pod_augmentations'] = []  # Initialize empty augmentations
-            session.player_stats['just_bought_pod'] = True  # Track to prevent immediate mod purchase
-            result['event'] = "Emergency escape pod purchased! This life-saving device will activate if your ship is destroyed. Navigate once before installing augmentations."
+            session.player_stats['pod_hp'] = session.player_stats['pod_max_hp']
+            session.player_stats['pod_augmentations'] = []
+            session.player_stats['just_bought_pod'] = True
+            result['event'] = "Emergency escape pod purchased! This life-saving device will activate if your ship is destroyed."
             result['event_type'] = "purchase"
         else:
             result['event'] = "Cannot purchase flight pod. Need 500 wealth and must not already own one."
-            result['event_type'] = "error"
-            
-    elif action == "buy_ship":
-        if session.player_stats['in_pod_mode'] and session.at_repair_location and session.player_stats['wealth'] >= 400:
-            # Apply cargo module wealth preservation
-            preserved_wealth = 0
-            if 'cargo_module' in session.player_stats.get('pod_augmentations', []):
-                preserved_wealth = int(session.player_stats['wealth'] * 0.5)
-                result['event'] = f"New ship purchased! Cargo module preserved {preserved_wealth} wealth. You're back in action with a fully functional vessel."
-            else:
-                result['event'] = "New ship purchased! You're back in action with a fully functional vessel."
-            
-            session.player_stats['wealth'] -= 400
-            session.player_stats['wealth'] += preserved_wealth
-            session.player_stats['ship_condition'] = session.player_stats.get('base_max_ship_condition', session.player_stats['max_ship_condition'])
-            session.player_stats['max_ship_condition'] = session.player_stats.get('base_max_ship_condition', session.player_stats['max_ship_condition'])
-            session.player_stats['in_pod_mode'] = False
-            session.player_stats['has_flight_pod'] = False  # Pod is used up
-            session.player_stats['pod_hp'] = 0
-            session.player_stats['pod_augmentations'] = []  # All augmentations lost
-            session.player_stats['pod_animation_state'] = "idle"
-            result['event_type'] = "purchase"
-        else:
-            result['event'] = "Cannot purchase ship. Must be in pod mode at a repair location with 400 wealth."
-            result['event_type'] = "error"
-            
-    elif action == "distress_signal":
-        if session.player_stats['in_pod_mode']:
-            if random.random() < 0.2:  # 20% chance of rescue
-                session.player_stats['wealth'] += 100
-                result['event'] = "A passing trader responds to your distress signal! They give you 100 credits out of pity."
-                result['event_type'] = "success"
-            else:
-                session.player_stats['pod_hp'] -= 5
-                result['event'] = "No response to distress signal. Waiting drains pod power. Lost 5 HP."
-                result['event_type'] = "danger"
-        else:
-            result['event'] = "Cannot send distress signal without being in pod mode."
             result['event_type'] = "error"
             
     elif action == "buy_augmentation":
@@ -442,9 +1047,8 @@ def process_action(session, action, choice=None, data=None):
             result['event_type'] = "purchase"
             
     elif action == "consume_food":
-        # Get amount from data, default to 10 for backward compatibility
         amount = data.get('amount', 10) if data else 10
-        health_gain = amount * 2  # Each food unit restores 2 health
+        health_gain = amount * 2
         
         if session.player_stats['food'] >= amount:
             session.player_stats['food'] -= amount
