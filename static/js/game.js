@@ -257,6 +257,37 @@ class GameEngine {
         this.uiManager.showNotification('Star map coming soon!', 'info');
     }
     
+    buyPod() {
+        this.sendAction('buy_pod');
+    }
+    
+    buyShip() {
+        this.sendAction('buy_ship');
+    }
+    
+    sendDistressSignal() {
+        this.sendAction('distress_signal');
+    }
+    
+    showPodMods() {
+        if (!this.gameState || !this.gameState.player_stats.has_flight_pod) {
+            this.uiManager.showNotification('You need a pod to install modifications!', 'danger');
+            return;
+        }
+        
+        if (this.gameState.player_stats.in_pod_mode) {
+            this.uiManager.showNotification('Cannot modify pod while in pod mode!', 'danger');
+            return;
+        }
+        
+        // Show available augmentations
+        this.uiManager.showPodModsModal(this.gameState);
+    }
+    
+    buyAugmentation(augmentationId) {
+        this.sendAction('buy_augmentation', { augmentation_id: augmentationId });
+    }
+    
     // Visual effects
     generateSpaceEnvironment() {
         // Clear existing objects

@@ -266,6 +266,9 @@ def process_action(session, action, choice=None, data=None):
     # Process different actions
     if action == "navigate":
         session.turn_count += 1
+        # Reset just bought pod flag
+        if 'just_bought_pod' in session.player_stats:
+            session.player_stats['just_bought_pod'] = False
         
         # Pod mode navigation is dangerous
         if session.player_stats['in_pod_mode']:
@@ -362,6 +365,7 @@ def process_action(session, action, choice=None, data=None):
             session.player_stats['has_flight_pod'] = True
             session.player_stats['pod_hp'] = session.player_stats['pod_max_hp']
             session.player_stats['pod_augmentations'] = []  # Initialize empty augmentations
+            session.player_stats['just_bought_pod'] = True  # Track to prevent immediate mod purchase
             result['event'] = "Emergency escape pod purchased! This life-saving device will activate if your ship is destroyed."
             result['event_type'] = "purchase"
         else:
@@ -419,6 +423,9 @@ def process_action(session, action, choice=None, data=None):
             result['event_type'] = "error"
         elif not session.at_repair_location:
             result['event'] = "Must be at a repair location to install augmentations."
+            result['event_type'] = "error"
+        elif session.player_stats.get('just_bought_pod', False):
+            result['event'] = "Must navigate at least once after buying pod before installing augmentations."
             result['event_type'] = "error"
         elif aug_id in session.player_stats.get('pod_augmentations', []):
             result['event'] = "Augmentation already installed."
