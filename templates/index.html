@@ -76,6 +76,16 @@
                             <span class="stat-value" id="ship-value">100</span>
                         </div>
                     </div>
+                    <!-- Audio Visualizer -->
+                    <div id="audio-visualizer" class="audio-visualizer">
+                        <canvas id="visualizer-canvas" width="200" height="40"></canvas>
+                        <div class="music-info">
+                            <span id="track-name" class="track-name">Deep Space Exploration</span>
+                            <div class="music-controls">
+                                <button class="music-btn" id="music-toggle" onclick="if(window.audioManager && window.audioManager.musicEngine) window.audioManager.musicEngine.isPlaying ? window.audioManager.pauseMusic() : window.audioManager.playMusic()" title="Toggle Music">♪</button>
+                            </div>
+                        </div>
+                    </div>
                     <div class="resource-group">
                         <div class="resource-item">
                             <span class="resource-icon">💰</span>
@@ -211,6 +221,7 @@
     <script src="{{ url_for('static', filename='js/config.js') }}"></script>
     <script src="{{ url_for('static', filename='js/renderer.js') }}"></script>
     <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/musicEngine.js') }}"></script>
     <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
     <script src="{{ url_for('static', filename='js/game.js') }}"></script>

@@ -44,6 +44,9 @@ class GameEngine {
             window.uiManager = this.uiManager; // Set global instance for onclick handlers
             console.log('UIManager created:', this.uiManager);
             
+            // Initialize audio visualizer
+            this.uiManager.initAudioVisualizer();
+            
             // Generate initial space environment
             this.generateSpaceEnvironment();
             
@@ -66,6 +69,11 @@ class GameEngine {
         this.socket.on('game_state', (state) => {
             this.gameState = state;
             this.uiManager.updateHUD(state);
+            
+            // Update music based on game state
+            if (this.audioManager) {
+                this.audioManager.updateMusicForGameState(state);
+            }
             
             // Check for game over or victory
             if (state.game_over) {
