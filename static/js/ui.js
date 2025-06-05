@@ -113,6 +113,95 @@ class UIManager {
     border-color: var(--success-color);
     animation: pulse 2s ease-in-out infinite;
 }
+
+/* Pod Augmentation Modal Styles */
+.pod-mods-content {
+    max-width: 600px;
+    width: 90%;
+}
+
+.modal-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+.augmentations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.augmentation-card {
+    background: var(--glass-bg);
+    border: 2px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.augmentation-card.owned {
+    border-color: var(--success-color);
+    background: rgba(51, 255, 51, 0.1);
+}
+
+.augmentation-card.disabled {
+    opacity: 0.6;
+}
+
+.augmentation-card:hover:not(.disabled) {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 255, 255, 0.3);
+}
+
+.aug-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.aug-name {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.aug-description {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.aug-cost {
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--accent-color);
+}
+
+.aug-buy-btn {
+    background: var(--glass-bg);
+    border: 2px solid var(--primary-color);
+    color: var(--text-primary);
+    padding: 0.5rem 1.5rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Space Mono', monospace;
+}
+
+.aug-buy-btn:hover:not(:disabled) {
+    background: var(--primary-color);
+    color: var(--bg-dark);
+    transform: scale(1.05);
+}
+
+.aug-buy-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 `;
         document.head.appendChild(style);
     }
@@ -190,7 +279,7 @@ class UIManager {
                 // Update pod HP display with real values
                 const podHpSpan = podIndicator.querySelector('.pod-hp');
                 if (podHpSpan) {
-                    podHpSpan.textContent = `(${stats.pod_hp || 30}/${stats.pod_max_hp || 30} HP)`;
+                    podHpSpan.textContent = `(${stats.pod_hp}/${stats.pod_max_hp} HP)`;
                 }
                 
                 // Show augmentations count if any
@@ -265,8 +354,8 @@ class UIManager {
                 this.hideBuyPodButton();
             }
             
-            // Show pod mods button if has pod and at location
-            if (stats.has_flight_pod && gameState.at_repair_location && !stats.in_pod_mode) {
+            // Show pod mods button if has pod and at location and didn't just buy pod
+            if (stats.has_flight_pod && gameState.at_repair_location && !stats.in_pod_mode && !stats.just_bought_pod) {
                 this.showPodModsButton();
             } else {
                 this.hidePodModsButton();
@@ -535,282 +624,6 @@ class UIManager {
             podModsBtn = document.createElement('button');
             podModsBtn.id = 'pod-mods-btn';
             podModsBtn.className = 'action-btn available';
-            podModsBtn.innerHTML = '<span class="btn-icon">⚙️</span><span>Pod Mods</span>';
-            podModsBtn.onclick = () => {
-                if (window.gameEngine) window.gameEngine.showPodMods();
-            };
-            
-            const actionPanel = document.getElementById('action-panel');
-            if (actionPanel) {
-                actionPanel.appendChild(podModsBtn);
-            }
-        }
-        podModsBtn.style.display = 'flex';
-    }
-    
-    hidePodModsButton() {
-        const podModsBtn = document.getElementById('pod-mods-btn');
-        if (podModsBtn) {
-            podModsBtn.style.display = 'none';
-        }
-    }
-    
-    showPodModsModal(gameState) {
-        const modal = document.getElementById('choice-modal');
-        const titleEl = document.getElementById('choice-title');
-        const choiceList = document.getElementById('choice-list');
-        
-        if (!modal || !titleEl || !choiceList) return;
-        
-        // Set title
-        titleEl.textContent = 'Pod Augmentations';
-        
-        // Clear previous choices
-        choiceList.innerHTML = '';
-        
-        // Show current augmentations
-        if (gameState.pod_augmentations_info && Object.keys(gameState.pod_augmentations_info).length > 0) {
-            const installedDiv = document.createElement('div');
-            installedDiv.className = 'augmentations-installed';
-            installedDiv.innerHTML = '<h4>Installed Augmentations:</h4>';
-            
-            for (const [id, aug] of Object.entries(gameState.pod_augmentations_info)) {
-                const augDiv = document.createElement('div');
-                augDiv.className = 'augmentation-item installed';
-                augDiv.innerHTML = `${aug.icon} ${aug.name} - ${aug.description}`;
-                installedDiv.appendChild(augDiv);
-            }
-            
-            choiceList.appendChild(installedDiv);
-        }
-        
-        // Show available augmentations
-        const availableDiv = document.createElement('div');
-        availableDiv.className = 'augmentations-available';
-        availableDiv.innerHTML = '<h4>Available Augmentations:</h4>';
-        
-        // List of all augmentations (this should match the backend)
-        const allAugmentations = {
-            "shield_boost": {
-                "name": "Shield Boost Matrix",
-                "description": "Increases maximum ship HP by 20",
-                "cost": 300,
-                "icon": "🛡️"
-            },
-            "scanner_array": {
-                "name": "Advanced Scanner Array",
-                "description": "Doubles rewards from scan events",
-                "cost": 400,
-                "icon": "📡"
-            },
-            "cargo_module": {
-                "name": "Emergency Cargo Module",
-                "description": "Preserves 50% of wealth when pod is used",
-                "cost": 500,
-                "icon": "📦"
-            },
-            "emergency_thrusters": {
-                "name": "Emergency Thrusters",
-                "description": "Reduces fuel consumption by 20%",
-                "cost": 250,
-                "icon": "🚀"
-            }
-        };
-        
-        let hasAvailable = false;
-        for (const [id, aug] of Object.entries(allAugmentations)) {
-            // Skip if already installed
-            if (gameState.player_stats.pod_augmentations && gameState.player_stats.pod_augmentations.includes(id)) {
-                continue;
-            }
-            
-            hasAvailable = true;
-            const btn = document.createElement('button');
-            btn.className = 'choice-btn';
-            
-            // Check if player can afford it
-            const canAfford = gameState.player_stats.wealth >= aug.cost;
-            const isAtLocation = gameState.at_repair_location;
-            const justBoughtPod = gameState.player_stats.just_bought_pod || false;
-            
-            if (!canAfford) {
-                btn.className += ' disabled';
-                btn.innerHTML = `${aug.icon} ${aug.name} - ${aug.cost} 💰 (Cannot afford)`;
-            } else if (!isAtLocation) {
-                btn.className += ' disabled';
-                btn.innerHTML = `${aug.icon} ${aug.name} - ${aug.cost} 💰 (Must be at repair location)`;
-            } else if (justBoughtPod) {
-                btn.className += ' disabled';
-                btn.innerHTML = `${aug.icon} ${aug.name} - ${aug.cost} 💰 (Navigate first after buying pod)`;
-            } else {
-                btn.innerHTML = `${aug.icon} ${aug.name} - ${aug.cost} 💰<br><small>${aug.description}</small>`;
-                btn.onclick = () => {
-                    this.hideChoiceModal();
-                    if (window.gameEngine) window.gameEngine.buyAugmentation(id);
-                };
-            }
-            
-            availableDiv.appendChild(btn);
-        }
-        
-        if (!hasAvailable) {
-            const noAugDiv = document.createElement('div');
-            noAugDiv.className = 'no-augmentations';
-            noAugDiv.textContent = 'All augmentations installed!';
-            availableDiv.appendChild(noAugDiv);
-        }
-        
-        choiceList.appendChild(availableDiv);
-        
-        // Add close button
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'choice-btn';
-        closeBtn.textContent = 'Close';
-        closeBtn.onclick = () => this.hideChoiceModal();
-        choiceList.appendChild(closeBtn);
-        
-        // Show modal
-        modal.style.display = 'flex';
-        modal.style.animation = 'fade-in 0.3s ease-out';
-    }
-    
-    showPodModsButton() {
-        let podModsBtn = document.getElementById('pod-mods-btn');
-        if (!podModsBtn) {
-            // Create button if it doesn't exist
-            podModsBtn = document.createElement('button');
-            podModsBtn.id = 'pod-mods-btn';
-            podModsBtn.className = 'action-btn available';
-            podModsBtn.innerHTML = '<span class="btn-icon">🔧</span><span>Pod Mods</span>';
-            podModsBtn.onclick = () => {
-                this.showPodModsModal();
-            };
-            
-            const actionPanel = document.getElementById('action-panel');
-            if (actionPanel) {
-                actionPanel.appendChild(podModsBtn);
-            }
-        }
-        podModsBtn.style.display = 'flex';
-    }
-    
-    hidePodModsButton() {
-        const podModsBtn = document.getElementById('pod-mods-btn');
-        if (podModsBtn) {
-            podModsBtn.style.display = 'none';
-        }
-    }
-    
-    showPodModsModal() {
-        // Create modal if it doesn't exist
-        let modal = document.getElementById('pod-mods-modal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'pod-mods-modal';
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <div class="modal-content pod-mods-content">
-                    <h3>🔧 Pod Augmentations</h3>
-                    <p class="modal-subtitle">Enhance your pod with powerful upgrades. Warning: All augmentations are lost if pod is used!</p>
-                    <div id="augmentations-list" class="augmentations-list"></div>
-                    <button class="modal-close-btn" onclick="window.uiManager.hidePodModsModal()">Close</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-        
-        // Populate augmentations
-        this.updateAugmentationsList();
-        
-        // Show modal
-        modal.style.display = 'flex';
-        modal.style.animation = 'fade-in 0.3s ease-out';
-    }
-    
-    hidePodModsModal() {
-        const modal = document.getElementById('pod-mods-modal');
-        if (modal) {
-            modal.style.animation = 'fade-out 0.3s ease-out';
-            setTimeout(() => {
-                modal.style.display = 'none';
-            }, 300);
-        }
-    }
-    
-    updateAugmentationsList() {
-        const listEl = document.getElementById('augmentations-list');
-        if (!listEl || !window.gameEngine || !window.gameEngine.gameState) return;
-        
-        const gameState = window.gameEngine.gameState;
-        const stats = gameState.player_stats;
-        const augmentations = [
-            {
-                id: 'shield_boost',
-                icon: '🛡️',
-                name: 'Shield Boost Matrix',
-                description: 'Increases maximum ship HP by 20',
-                cost: 300
-            },
-            {
-                id: 'scanner_array',
-                icon: '📡',
-                name: 'Advanced Scanner Array',
-                description: 'Doubles rewards from positive scan events',
-                cost: 400
-            },
-            {
-                id: 'cargo_module',
-                icon: '📦',
-                name: 'Emergency Cargo Module',
-                description: 'Preserves 50% of wealth when pod is used',
-                cost: 500
-            },
-            {
-                id: 'emergency_thrusters',
-                icon: '🚀',
-                name: 'Emergency Thrusters',
-                description: 'Reduces fuel consumption by 20%',
-                cost: 250
-            }
-        ];
-        
-        listEl.innerHTML = '';
-        
-        augmentations.forEach(aug => {
-            const augEl = document.createElement('div');
-            augEl.className = 'augmentation-item';
-            
-            const isOwned = stats.pod_augmentations && stats.pod_augmentations.includes(aug.id);
-            const canAfford = stats.wealth >= aug.cost;
-            
-            augEl.innerHTML = `
-                <div class="aug-icon">${aug.icon}</div>
-                <div class="aug-info">
-                    <div class="aug-name">${aug.name}</div>
-                    <div class="aug-description">${aug.description}</div>
-                </div>
-                <div class="aug-action">
-                    ${isOwned ? 
-                        '<span class="aug-owned">Installed</span>' : 
-                        `<button class="aug-buy-btn ${canAfford ? '' : 'disabled'}" 
-                            ${canAfford ? `onclick="window.gameEngine.buyAugmentation('${aug.id}')"` : 'disabled'}>
-                            ${aug.cost} 💰
-                        </button>`
-                    }
-                </div>
-            `;
-            
-            listEl.appendChild(augEl);
-        });
-    }
-    
-    showPodModsButton() {
-        let podModsBtn = document.getElementById('pod-mods-btn');
-        if (!podModsBtn) {
-            // Create button if it doesn't exist
-            podModsBtn = document.createElement('button');
-            podModsBtn.id = 'pod-mods-btn';
-            podModsBtn.className = 'action-btn available';
             podModsBtn.innerHTML = '<span class="btn-icon">✨</span><span>Pod Mods</span>';
             podModsBtn.onclick = () => {
                 this.showPodModsModal();
@@ -902,91 +715,9 @@ class UIManager {
             setTimeout(() => this.showPodModsModal(), 500);
         }
     }
-    
-    showAugmentationsButton() {
-        let augBtn = document.getElementById('augmentations-btn');
-        if (!augBtn) {
-            // Create button if it doesn't exist
-            augBtn = document.createElement('button');
-            augBtn.id = 'augmentations-btn';
-            augBtn.className = 'action-btn available';
-            augBtn.innerHTML = '<span class="btn-icon">⚙️</span><span>Pod Mods</span>';
-            augBtn.onclick = () => {
-                if (window.gameEngine) window.gameEngine.showAugmentations();
-            };
-            
-            const actionPanel = document.getElementById('action-panel');
-            if (actionPanel) {
-                actionPanel.appendChild(augBtn);
-            }
-        }
-        augBtn.style.display = 'flex';
-    }
-    
-    hideAugmentationsButton() {
-        const augBtn = document.getElementById('augmentations-btn');
-        if (augBtn) {
-            augBtn.style.display = 'none';
-        }
-    }
-    
-    showAugmentationsModal() {
-        if (!window.gameEngine || !window.gameEngine.gameState) return;
-        
-        const gameState = window.gameEngine.gameState;
-        const installedAugs = gameState.player_stats.pod_augmentations || [];
-        const wealth = gameState.player_stats.wealth;
-        
-        // Define available augmentations
-        const augmentations = [
-            { id: 'shield_boost', name: 'Shield Boost Matrix', desc: 'Increases max ship HP by 20', cost: 300, icon: '🛡️' },
-            { id: 'scanner_array', name: 'Advanced Scanner Array', desc: 'Doubles scan event rewards', cost: 400, icon: '📡' },
-            { id: 'cargo_module', name: 'Emergency Cargo Module', desc: 'Preserves 50% wealth when pod used', cost: 500, icon: '📦' },
-            { id: 'emergency_thrusters', name: 'Emergency Thrusters', desc: 'Reduces fuel consumption by 20%', cost: 250, icon: '🚀' }
-        ];
-        
-        let content = '<div class="augmentations-list">';
-        
-        augmentations.forEach(aug => {
-            const isInstalled = installedAugs.includes(aug.id);
-            const canAfford = wealth >= aug.cost;
-            
-            content += `
-                <div class="augmentation-item ${isInstalled ? 'installed' : ''} ${!canAfford && !isInstalled ? 'disabled' : ''}">
-                    <div class="aug-icon">${aug.icon}</div>
-                    <div class="aug-info">
-                        <div class="aug-name">${aug.name}</div>
-                        <div class="aug-desc">${aug.desc}</div>
-                    </div>
-                    <div class="aug-action">
-                        ${isInstalled ? 
-                            '<span class="aug-status">Installed</span>' : 
-                            `<button class="aug-buy-btn" ${canAfford ? `onclick="window.gameEngine.buyAugmentation('${aug.id}')"` : 'disabled'}>
-                                ${aug.cost} 💰
-                            </button>`
-                        }
-                    </div>
-                </div>
-            `;
-        });
-        
-        content += '</div>';
-        
-        // Add some info about augmentations
-        content += '<div class="aug-info-text">Pod augmentations enhance your ship while the pod is attached. All augmentations are lost when the pod is used!</div>';
-        
-        // Add close button
-        content += '<button class="close-aug-modal-btn" onclick="document.getElementById(\'choice-modal\').style.display = \'none\'">Close</button>';
-        
-        this.showChoiceModal('Pod Augmentations', [], () => {});
-        
-        // Replace the choice content with augmentations content
-        const choiceList = document.getElementById('choice-list');
-        if (choiceList) {
-            choiceList.innerHTML = content;
-        }
-    }
 }
 
 // Export for use in other modules
 window.UIManager = UIManager;
+// Also create a global instance for onclick handlers
+window.uiManager = null; // Will be set when UIManager is created

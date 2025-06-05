@@ -363,7 +363,7 @@ def process_action(session, action, choice=None, data=None):
         if session.player_stats['wealth'] >= 500 and not session.player_stats['has_flight_pod']:
             session.player_stats['wealth'] -= 500
             session.player_stats['has_flight_pod'] = True
-            session.player_stats['pod_hp'] = session.player_stats['pod_max_hp']
+            session.player_stats['pod_hp'] = session.player_stats['pod_max_hp']  # Initialize pod HP to maximum
             session.player_stats['pod_augmentations'] = []  # Initialize empty augmentations
             session.player_stats['just_bought_pod'] = True  # Track to prevent immediate mod purchase
             result['event'] = "Emergency escape pod purchased! This life-saving device will activate if your ship is destroyed."
