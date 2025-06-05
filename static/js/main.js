@@ -66,16 +66,32 @@ window.addEventListener('DOMContentLoaded', async () => {
             case '2':
                 window.gameEngine.scanArea();
                 break;
+            case 'n':
+            case 'N':
+                window.gameEngine.navigate();
+                break;
+            case 's':
+            case 'S':
+                window.gameEngine.scanArea();
+                break;
             case '3':
+            case 'r':
+            case 'R':
                 window.gameEngine.repair();
                 break;
             case '4':
+            case 'i':
+            case 'I':
                 window.gameEngine.showInventory();
                 break;
             case '5':
+            case 'q':
+            case 'Q':
                 window.gameEngine.showQuests();
                 break;
             case '6':
+            case 'm':
+            case 'M':
                 window.gameEngine.showMap();
                 break;
             case 'Escape':

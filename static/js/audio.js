@@ -255,50 +255,147 @@ class AudioManager {
     }
     
     createAmbientMusic() {
-        // Create a simple ambient drone for space atmosphere
+        // Create evolving ambient space music
         if (this.ambientContext) {
-            // Stop existing ambient if any
             this.ambientContext.close();
         }
         
         this.ambientContext = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = this.ambientContext;
         
-        // Create multiple oscillators for a rich drone
-        const oscillators = [];
-        const frequencies = [55, 110, 165, 220]; // Low frequencies for space feel
+        // Master gain for overall volume
+        const masterGain = ctx.createGain();
+        masterGain.gain.setValueAtTime(this.musicVolume * this.masterVolume * 0.5, ctx.currentTime);
+        masterGain.connect(ctx.destination);
         
-        frequencies.forEach((freq, index) => {
-            const osc = this.ambientContext.createOscillator();
-            const gain = this.ambientContext.createGain();
-            const filter = this.ambientContext.createBiquadFilter();
+        // Create layered ambient sounds
+        this.ambientLayers = [];
+        
+        // Layer 1: Deep space drone with slow evolution
+        const createDrone = (baseFreq, detune) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            const filter = ctx.createBiquadFilter();
             
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, this.ambientContext.currentTime);
+            osc.frequency.setValueAtTime(baseFreq, ctx.currentTime);
+            osc.detune.setValueAtTime(detune, ctx.currentTime);
             
-            // Slight frequency modulation for movement
-            const lfo = this.ambientContext.createOscillator();
-            const lfoGain = this.ambientContext.createGain();
-            lfo.frequency.setValueAtTime(0.1 + index * 0.05, this.ambientContext.currentTime);
-            lfoGain.gain.setValueAtTime(2, this.ambientContext.currentTime);
+            // Slow frequency evolution
+            const lfo = ctx.createOscillator();
+            const lfoGain = ctx.createGain();
+            lfo.frequency.setValueAtTime(0.05, ctx.currentTime);
+            lfoGain.gain.setValueAtTime(baseFreq * 0.02, ctx.currentTime);
             lfo.connect(lfoGain);
             lfoGain.connect(osc.frequency);
             lfo.start();
             
             filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(200 + index * 100, this.ambientContext.currentTime);
+            filter.frequency.setValueAtTime(800, ctx.currentTime);
+            filter.Q.setValueAtTime(5, ctx.currentTime);
             
-            gain.gain.setValueAtTime(this.musicVolume * this.masterVolume * 0.1, this.ambientContext.currentTime);
+            // Volume envelope
+            gain.gain.setValueAtTime(0, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 3);
             
             osc.connect(filter);
             filter.connect(gain);
-            gain.connect(this.ambientContext.destination);
+            gain.connect(masterGain);
             
             osc.start();
-            oscillators.push(osc);
-        });
+            this.ambientLayers.push({osc, gain, lfo});
+        };
         
-        // Store reference for stopping later
-        this.ambientOscillators = oscillators;
+        // Create harmonic series
+        createDrone(55, 0);      // Root
+        createDrone(82.5, -5);   // Fifth
+        createDrone(110, 5);     // Octave
+        createDrone(137.5, -3);  // Major third
+        
+        // Layer 2: Shimmering high frequencies
+        const createShimmer = () => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            const panner = ctx.createStereoPanner();
+            
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(880 + Math.random() * 440, ctx.currentTime);
+            
+            // Random panning
+            const panLfo = ctx.createOscillator();
+            panLfo.frequency.setValueAtTime(0.2 + Math.random() * 0.3, ctx.currentTime);
+            panLfo.connect(panner.pan);
+            panLfo.start();
+            
+            // Amplitude modulation
+            const ampLfo = ctx.createOscillator();
+            const ampGain = ctx.createGain();
+            ampLfo.frequency.setValueAtTime(0.1 + Math.random() * 0.2, ctx.currentTime);
+            ampGain.gain.setValueAtTime(0.05, ctx.currentTime);
+            ampLfo.connect(ampGain);
+            ampGain.connect(gain.gain);
+            ampLfo.start();
+            
+            gain.gain.setValueAtTime(0.05, ctx.currentTime);
+            
+            osc.connect(gain);
+            gain.connect(panner);
+            panner.connect(masterGain);
+            
+            osc.start();
+            
+            // Fade out and restart periodically
+            setTimeout(() => {
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
+                setTimeout(() => {
+                    osc.stop();
+                    if (this.ambientContext === ctx) {
+                        createShimmer();
+                    }
+                }, 2000);
+            }, 15000 + Math.random() * 10000);
+        };
+        
+        // Create multiple shimmers
+        for (let i = 0; i < 3; i++) {
+            setTimeout(() => createShimmer(), i * 2000);
+        }
+        
+        // Layer 3: Occasional cosmic "events"
+        const createCosmicEvent = () => {
+            if (this.ambientContext !== ctx) return;
+            
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            const filter = ctx.createBiquadFilter();
+            
+            osc.type = 'sawtooth';
+            const baseFreq = 110 + Math.random() * 220;
+            osc.frequency.setValueAtTime(baseFreq, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.5, ctx.currentTime + 4);
+            
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(baseFreq * 2, ctx.currentTime);
+            filter.frequency.exponentialRampToValueAtTime(baseFreq * 0.5, ctx.currentTime + 4);
+            filter.Q.setValueAtTime(10, ctx.currentTime);
+            
+            gain.gain.setValueAtTime(0, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.5);
+            gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 4);
+            
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+            
+            osc.start();
+            osc.stop(ctx.currentTime + 4);
+            
+            // Schedule next event
+            setTimeout(() => createCosmicEvent(), 20000 + Math.random() * 20000);
+        };
+        
+        // Start cosmic events after a delay
+        setTimeout(() => createCosmicEvent(), 10000);
     }
 }
 

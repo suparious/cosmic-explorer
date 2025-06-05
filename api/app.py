@@ -17,9 +17,28 @@ import time
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import config
-from events import offer_quest, random_event
-from navigation import standard_navigation
 import game
+
+# Web-compatible navigation function
+def web_navigation(player_stats, choice=None):
+    """Navigation function for web interface that doesn't use terminal input"""
+    import random
+    at_repair_location = False
+    
+    # Random choice if not specified
+    if choice is None:
+        choice = random.choice(['planet', 'route'])
+    
+    if choice == 'planet':
+        player_stats['ship_condition'] -= 5
+        player_stats['fuel'] -= config.FUEL_CONSUMPTION_RATE
+        at_repair_location = True
+        message = "You approach a planet and dock at an outpost. Repairs available!"
+    else:
+        player_stats['fuel'] -= config.FUEL_CONSUMPTION_RATE
+        message = "You proceed smoothly through space."
+    
+    return at_repair_location, message
 
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
 CORS(app)
@@ -128,6 +147,8 @@ def perform_action(session_id, action_type=None):
 
 def process_action(session, action, choice=None):
     """Process game actions and return results"""
+    import random
+    
     result = {
         "event": None,
         "event_type": "info",
@@ -164,21 +185,42 @@ def process_action(session, action, choice=None):
     # Process different actions
     if action == "navigate":
         session.turn_count += 1
-        session.at_repair_location = standard_navigation(session.player_stats)
-        result['event'] = "Navigation complete"
+        session.at_repair_location, nav_message = web_navigation(session.player_stats)
+        result['event'] = nav_message
         result['event_type'] = "navigation"
         
     elif action == "quest":
         if not session.active_quest:
-            session.active_quest = offer_quest(session.player_stats, session.active_quest)
-            if session.active_quest:
-                result['event'] = f"New quest available: {session.active_quest['name']}"
-                result['event_type'] = "quest"
+            # Web-compatible quest offering
+            quests = [
+                {"name": "Rescue Mission", "reward": 300, "risk": "health", "status": "Locate stranded crew", "reward_type": "wealth"},
+                {"name": "Artifact Hunt", "reward": 500, "risk": "ship_condition", "status": "Find ancient relic", "reward_type": "wealth"},
+                {"name": "Fuel Expedition", "reward": 50, "risk": "fuel", "status": "Secure fuel reserves", "reward_type": "fuel"},
+                {"name": "Diplomatic Encounter", "reward": 200, "risk": "health", "status": "Negotiate with alien leaders", "reward_type": "wealth"}
+            ]
+            quest = random.choice(quests)
+            session.active_quest = quest
+            result['event'] = f"New quest available: {quest['name']} - {quest['status']}. Reward: {quest['reward']} {quest['reward_type']}"
+            result['event_type'] = "quest"
                 
     elif action == "event":
-        event_result = random_event(session.player_stats)
-        result['event'] = "A random event occurred!"
-        result['event_type'] = "random_event"
+        # Web-compatible random event
+        events = [
+            ("Encounter alien traders", "wealth", 100, "You trade successfully! Wealth increased."),
+            ("Hit by cosmic anomaly", "ship_condition", -20, "Your ship takes damage! Ship condition decreased."),
+            ("Discover abandoned ship", "wealth", 150, "You salvage resources! Wealth increased."),
+            ("Navigate through asteroid field", "fuel", -10, "Maneuvering consumes extra fuel! Fuel decreased."),
+            ("Find a fuel depot", "fuel", 30, "You refuel your ship! Fuel increased."),
+            ("Face pirate ambush", "health", -25, "Pirates attack! Health decreased."),
+            ("Discover cosmic phenomenon", "wealth", 80, "You document a rare event! Wealth increased."),
+            ("Receive distress call", "ship_condition", -15, "Helping out strains your ship! Ship condition decreased."),
+            ("Discover food supplies", "food", 20, "You find edible resources! Food supplies increased."),
+            ("Stumble upon hidden fuel cache", "fuel", 15, "You uncover extra fuel reserves! Fuel increased.")
+        ]
+        event, stat, change, message = random.choice(events)
+        session.player_stats[stat] += change
+        result['event'] = f"{event} - {message}"
+        result['event_type'] = "random_event" if change < 0 else "success"
         
     elif action == "repair":
         if session.at_repair_location and session.player_stats['wealth'] >= 100:
