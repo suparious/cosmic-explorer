@@ -124,13 +124,13 @@ def game_loop():
             else:
                 break
 
-        # Significantly increased event frequency for more engaging gameplay
+        # Refined event frequency for more balanced and engaging gameplay
         event_chance = random.random() * 100
-        if event_chance < config.QUEST_OFFER_CHANCE + 20 and not active_quest:  # Higher chance for quests
+        if event_chance < config.QUEST_OFFER_CHANCE + 15 and not active_quest:  # Adjusted chance for quests
             active_quest = offer_quest(player_stats, active_quest)
             if active_quest:
                 continue
-        elif event_chance < config.RANDOM_EVENT_CHANCE + 30:  # Higher chance for random events
+        elif event_chance < config.RANDOM_EVENT_CHANCE + 25:  # Adjusted chance for random events
             random_event(player_stats)
         else:
             standard_navigation(player_stats)
