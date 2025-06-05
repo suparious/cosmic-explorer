@@ -79,6 +79,10 @@ class GameEngine {
         this.socket.on('game_event', (event) => {
             this.handleGameEvent(event);
         });
+        
+        this.socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+        });
     }
     
     handleGameEvent(event) {
@@ -110,6 +114,11 @@ class GameEngine {
             case 'explosion':
                 this.audioManager.playExplosionSound();
                 this.renderer.createExplosion(this.renderer.ship.x, this.renderer.ship.y);
+                break;
+            case 'pod_activated':
+                this.audioManager.playAlertSound();
+                this.createPodEjectionEffect();
+                this.uiManager.showNotification('ESCAPE POD ACTIVATED!', 'warning');
                 break;
         }
         
@@ -165,12 +174,30 @@ class GameEngine {
         const targetX = this.renderer.ship.x + Math.cos(angle) * distance;
         const targetY = this.renderer.ship.y + Math.sin(angle) * distance;
         
-        // Create warp effect
-        this.audioManager.playWarpSound();
-        this.createWarpEffect();
-        
-        // Move ship
-        this.animateShipMovement(targetX, targetY);
+        // Different effects for pod mode
+        if (this.gameState && this.gameState.player_stats.in_pod_mode) {
+            this.audioManager.playSound('alert');
+            // Slower, more erratic movement in pod
+            this.animatePodMovement(targetX, targetY);
+        } else {
+            // Create warp effect
+            this.audioManager.playWarpSound();
+            this.createWarpEffect();
+            // Move ship
+            this.animateShipMovement(targetX, targetY);
+        }
+    }
+    
+    buyPod() {
+        this.sendAction('buy_pod');
+    }
+    
+    buyShip() {
+        this.sendAction('buy_ship');
+    }
+    
+    sendDistressSignal() {
+        this.sendAction('distress_signal');
     }
     
     scanArea() {
@@ -272,6 +299,47 @@ class GameEngine {
         animate();
     }
     
+    animatePodMovement(targetX, targetY) {
+        const startX = this.renderer.ship.x;
+        const startY = this.renderer.ship.y;
+        const duration = 3000; // Slower than ship
+        const startTime = Date.now();
+        
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // More erratic movement for pod
+            const wobble = Math.sin(elapsed * 0.01) * 5;
+            const easeProgress = 1 - Math.pow(1 - progress, 2);
+            
+            // Update pod position
+            this.renderer.ship.x = startX + (targetX - startX) * easeProgress + wobble;
+            this.renderer.ship.y = startY + (targetY - startY) * easeProgress;
+            
+            // Create small thrust particles
+            if (progress < 1 && Math.random() < 0.3) {
+                const particle = {
+                    x: this.renderer.ship.x,
+                    y: this.renderer.ship.y,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: (Math.random() - 0.5) * 2,
+                    life: 20,
+                    maxLife: 20,
+                    size: 1,
+                    color: '255, 200, 0'
+                };
+                this.renderer.particles.push(particle);
+            }
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            }
+        };
+        
+        animate();
+    }
+    
     createWarpEffect() {
         const ship = this.renderer.ship;
         const emitter = this.particleSystem.createEmitter({
@@ -355,6 +423,10 @@ class GameEngine {
             this.renderer.ship.health = this.gameState.player_stats.health;
             this.renderer.ship.condition = this.gameState.player_stats.ship_condition;
             this.renderer.ship.hasPod = this.gameState.player_stats.has_flight_pod;
+            this.renderer.ship.inPodMode = this.gameState.player_stats.in_pod_mode;
+            this.renderer.ship.podHp = this.gameState.player_stats.pod_hp;
+            this.renderer.ship.podMaxHp = this.gameState.player_stats.pod_max_hp;
+            this.renderer.ship.podAnimationState = this.gameState.player_stats.pod_animation_state;
         }
         
         // Render
@@ -362,6 +434,33 @@ class GameEngine {
         this.particleSystem.render(this.renderer.ctx);
         
         requestAnimationFrame(() => this.renderLoop());
+    }
+    
+    createPodEjectionEffect() {
+        const ship = this.renderer.ship;
+        
+        // Create explosion effect at ship location
+        this.renderer.createExplosion(ship.x, ship.y);
+        
+        // Create ejection particles
+        for (let i = 0; i < 50; i++) {
+            const angle = (Math.PI * 2 * i) / 50;
+            const speed = 5 + Math.random() * 10;
+            const particle = {
+                x: ship.x,
+                y: ship.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 60,
+                maxLife: 60,
+                size: Math.random() * 3 + 1,
+                color: '255, 200, 0'
+            };
+            this.renderer.particles.push(particle);
+        }
+        
+        // Screen shake effect
+        this.shakeScreen();
     }
 }
 

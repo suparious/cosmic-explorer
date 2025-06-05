@@ -60,7 +60,9 @@ class GameSession:
             "food": config.STARTING_FOOD,
             "has_flight_pod": False,
             "pod_hp": 0,
-            "in_pod_mode": False  # True when ship destroyed, using pod
+            "pod_max_hp": 30,  # Maximum pod HP
+            "in_pod_mode": False,  # True when ship destroyed, using pod
+            "pod_animation_state": "idle"  # idle, ejecting, active, damaged
         }
         self.active_quest = None
         self.turn_count = 0
@@ -164,9 +166,26 @@ def process_action(session, action, choice=None):
         result['event_type'] = "game_over"
         return result
     
-    if session.player_stats['ship_condition'] <= 0:
+    if session.player_stats['ship_condition'] <= 0 and not session.player_stats['in_pod_mode']:
+        if session.player_stats['has_flight_pod']:
+            # Activate pod mode
+            session.player_stats['in_pod_mode'] = True
+            session.player_stats['pod_hp'] = session.player_stats['pod_max_hp']
+            session.player_stats['pod_animation_state'] = "ejecting"
+            result['event'] = "Ship destroyed! Emergency pod activated. You have 30 HP to reach safety!"
+            result['event_type'] = "pod_activated"
+            result['choices'] = ["Navigate to nearest planet/outpost", "Try to send distress signal"]
+            return result
+        else:
+            session.game_over = True
+            result['event'] = "Game Over: Your ship is destroyed and you have no escape pod."
+            result['event_type'] = "game_over"
+            return result
+    
+    # Check pod destruction
+    if session.player_stats['in_pod_mode'] and session.player_stats['pod_hp'] <= 0:
         session.game_over = True
-        result['event'] = "Game Over: Your ship is destroyed."
+        result['event'] = "Game Over: Your escape pod has been destroyed."
         result['event_type'] = "game_over"
         return result
     
@@ -187,9 +206,31 @@ def process_action(session, action, choice=None):
     # Process different actions
     if action == "navigate":
         session.turn_count += 1
-        session.at_repair_location, nav_message = web_navigation(session.player_stats)
-        result['event'] = nav_message
-        result['event_type'] = "navigation"
+        
+        # Pod mode navigation is dangerous
+        if session.player_stats['in_pod_mode']:
+            session.at_repair_location, nav_message = web_navigation(session.player_stats)
+            
+            # Pod takes damage during travel
+            damage_chance = random.random()
+            if damage_chance < 0.3:  # 30% chance of damage
+                damage = 10
+                session.player_stats['pod_hp'] -= damage
+                session.player_stats['pod_animation_state'] = "damaged"
+                result['event'] = f"{nav_message} WARNING: Pod hull damaged! Lost {damage} HP. Pod HP: {session.player_stats['pod_hp']}/{session.player_stats['pod_max_hp']}"
+                result['event_type'] = "danger"
+            else:
+                session.player_stats['pod_animation_state'] = "active"
+                result['event'] = f"{nav_message} Pod holding steady. Pod HP: {session.player_stats['pod_hp']}/{session.player_stats['pod_max_hp']}"
+                result['event_type'] = "navigation"
+                
+            # Check if reached safety
+            if session.at_repair_location:
+                result['choices'] = ["Buy new ship (400 wealth)", "Wait and conserve resources"]
+        else:
+            session.at_repair_location, nav_message = web_navigation(session.player_stats)
+            result['event'] = nav_message
+            result['event_type'] = "navigation"
         
     elif action == "quest":
         if not session.active_quest:
@@ -249,10 +290,39 @@ def process_action(session, action, choice=None):
         if session.player_stats['wealth'] >= 500 and not session.player_stats['has_flight_pod']:
             session.player_stats['wealth'] -= 500
             session.player_stats['has_flight_pod'] = True
-            result['event'] = "Flight pod purchased!"
+            session.player_stats['pod_hp'] = session.player_stats['pod_max_hp']
+            result['event'] = "Emergency escape pod purchased! This life-saving device will activate if your ship is destroyed."
             result['event_type'] = "purchase"
         else:
-            result['event'] = "Cannot purchase flight pod."
+            result['event'] = "Cannot purchase flight pod. Need 500 wealth and must not already own one."
+            result['event_type'] = "error"
+            
+    elif action == "buy_ship":
+        if session.player_stats['in_pod_mode'] and session.at_repair_location and session.player_stats['wealth'] >= 400:
+            session.player_stats['wealth'] -= 400
+            session.player_stats['ship_condition'] = session.player_stats['max_ship_condition']
+            session.player_stats['in_pod_mode'] = False
+            session.player_stats['has_flight_pod'] = False  # Pod is used up
+            session.player_stats['pod_hp'] = 0
+            session.player_stats['pod_animation_state'] = "idle"
+            result['event'] = "New ship purchased! You're back in action with a fully functional vessel."
+            result['event_type'] = "purchase"
+        else:
+            result['event'] = "Cannot purchase ship. Must be in pod mode at a repair location with 400 wealth."
+            result['event_type'] = "error"
+            
+    elif action == "distress_signal":
+        if session.player_stats['in_pod_mode']:
+            if random.random() < 0.2:  # 20% chance of rescue
+                session.player_stats['wealth'] += 100
+                result['event'] = "A passing trader responds to your distress signal! They give you 100 credits out of pity."
+                result['event_type'] = "success"
+            else:
+                session.player_stats['pod_hp'] -= 5
+                result['event'] = "No response to distress signal. Waiting drains pod power. Lost 5 HP."
+                result['event_type'] = "danger"
+        else:
+            result['event'] = "Cannot send distress signal without being in pod mode."
             result['event_type'] = "error"
             
     elif action == "consume_food":

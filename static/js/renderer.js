@@ -12,7 +12,6 @@ class Renderer {
         
         // Game objects
         this.ship = null;
-        this.playerAvatar = null;
         this.planets = [];
         this.stations = [];
         this.asteroids = [];
@@ -51,17 +50,11 @@ class Renderer {
             trail: [],
             health: 100,
             condition: 100,
-            hasPod: false
-        };
-        
-        // Initialize player avatar
-        this.playerAvatar = {
-            x: this.width / 2,
-            y: this.height / 2,
             hasPod: false,
-            podHp: 0,
             inPodMode: false,
-            animation: 0
+            podHp: 0,
+            podMaxHp: 30,
+            podAnimationState: 'idle'
         };
     }
     
@@ -136,7 +129,6 @@ class Renderer {
         this.renderStations();
         this.renderAsteroids();
         this.renderShip();
-        this.renderPlayerAvatar();
         this.renderParticles();
         
         // Restore context
@@ -202,6 +194,12 @@ class Renderer {
         });
         this.ctx.stroke();
         
+        // Check if in pod mode
+        if (this.ship.inPodMode) {
+            this.renderPod();
+            return;
+        }
+        
         // Render ship
         this.ctx.save();
         this.ctx.translate(this.ship.x, this.ship.y);
@@ -237,10 +235,121 @@ class Renderer {
         this.ctx.arc(-10, 0, 5, 0, Math.PI * 2);
         this.ctx.fill();
         
-        // Pod indicator
+        // Pod attached to ship
         if (this.ship.hasPod) {
-            this.ctx.fillStyle = GameConfig.colors.accent;
-            this.ctx.fillRect(-20, -5, 5, 10);
+            // Pod attachment point
+            this.ctx.save();
+            this.ctx.translate(-25, 0);
+            
+            // Pod glow effect
+            const podGlow = this.ctx.createRadialGradient(0, 0, 8, 0, 0, 15);
+            podGlow.addColorStop(0, 'rgba(255, 200, 0, 0.6)');
+            podGlow.addColorStop(1, 'rgba(255, 200, 0, 0)');
+            this.ctx.fillStyle = podGlow;
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, 15, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Pod body
+            this.ctx.fillStyle = '#FFA500';
+            this.ctx.strokeStyle = '#FFD700';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, 8, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.stroke();
+            
+            // Pod window
+            this.ctx.fillStyle = 'rgba(200, 200, 255, 0.8)';
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, 3, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            this.ctx.restore();
+        }
+        
+        this.ctx.restore();
+    }
+    
+    renderPod() {
+        if (!this.ship) return;
+        
+        this.ctx.save();
+        this.ctx.translate(this.ship.x, this.ship.y);
+        
+        // Pod damage effect
+        if (this.ship.podAnimationState === 'damaged') {
+            const shake = Math.sin(Date.now() * 0.1) * 2;
+            this.ctx.translate(shake, 0);
+        }
+        
+        // Pod shield/energy field
+        const time = Date.now() * 0.001;
+        const shieldAlpha = 0.2 + Math.sin(time * 2) * 0.1;
+        const shieldRadius = 25 + Math.sin(time * 3) * 3;
+        
+        // Draw shield based on pod HP
+        const hpRatio = this.ship.podHp / this.ship.podMaxHp;
+        let shieldColor;
+        if (hpRatio > 0.6) {
+            shieldColor = `rgba(0, 255, 255, ${shieldAlpha})`;
+        } else if (hpRatio > 0.3) {
+            shieldColor = `rgba(255, 255, 0, ${shieldAlpha})`;
+        } else {
+            shieldColor = `rgba(255, 0, 0, ${shieldAlpha * 1.5})`;
+        }
+        
+        this.ctx.strokeStyle = shieldColor;
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, shieldRadius, 0, Math.PI * 2);
+        this.ctx.stroke();
+        
+        // Pod glow
+        const podGlow = this.ctx.createRadialGradient(0, 0, 12, 0, 0, 20);
+        podGlow.addColorStop(0, 'rgba(255, 200, 0, 0.8)');
+        podGlow.addColorStop(1, 'rgba(255, 100, 0, 0)');
+        this.ctx.fillStyle = podGlow;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, 20, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Pod body
+        this.ctx.fillStyle = '#FFA500';
+        this.ctx.strokeStyle = '#FFD700';
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, 12, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.stroke();
+        
+        // Pod window/cockpit
+        this.ctx.fillStyle = 'rgba(150, 150, 255, 0.9)';
+        this.ctx.beginPath();
+        this.ctx.arc(0, -2, 5, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Thruster effects
+        if (this.ship.podAnimationState === 'active') {
+            const thrustIntensity = Math.sin(time * 10) * 0.3 + 0.7;
+            this.ctx.fillStyle = `rgba(0, 200, 255, ${thrustIntensity})`;
+            for (let i = 0; i < 3; i++) {
+                const angle = (i / 3) * Math.PI * 2 + time;
+                const x = Math.cos(angle) * 15;
+                const y = Math.sin(angle) * 15;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, 3, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        }
+        
+        // Critical warning
+        if (hpRatio <= 0.3) {
+            const warningAlpha = Math.sin(time * 8) * 0.5 + 0.5;
+            this.ctx.fillStyle = `rgba(255, 0, 0, ${warningAlpha})`;
+            this.ctx.font = 'bold 12px Orbitron';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('CRITICAL', 0, -35);
         }
         
         this.ctx.restore();

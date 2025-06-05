@@ -277,6 +277,65 @@ body {
 .fuel-fill { background: linear-gradient(90deg, #3366ff, #66aaff); }
 .ship-fill { background: linear-gradient(90deg, #33ff33, #66ff66); }
 
+/* Pod Mode Styles */
+.ship-fill.pod-mode {
+    background: linear-gradient(90deg, #FFA500, #FFD700);
+}
+
+.stat-bar.critical .stat-fill {
+    animation: critical-pulse 1s ease-in-out infinite;
+}
+
+@keyframes critical-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+#pod-owned-indicator {
+    border: 1px solid var(--accent-color);
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    background: rgba(255, 200, 0, 0.1);
+    animation: pod-glow 2s ease-in-out infinite;
+}
+
+@keyframes pod-glow {
+    0%, 100% { box-shadow: 0 0 5px rgba(255, 200, 0, 0.3); }
+    50% { box-shadow: 0 0 15px rgba(255, 200, 0, 0.6); }
+}
+
+/* Pod Action Buttons */
+#buy-pod-btn, #buy-ship-btn {
+    background: linear-gradient(135deg, var(--accent-color), #FFA500);
+    color: var(--bg-dark);
+    font-weight: bold;
+}
+
+#buy-pod-btn:hover, #buy-ship-btn:hover {
+    box-shadow: 0 5px 30px rgba(255, 200, 0, 0.5);
+    transform: translateY(-3px);
+}
+
+/* Pod Mode UI State */
+.pod-mode-active .action-btn:not(#navigate-btn):not(#buy-ship-btn) {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.pod-critical-warning {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--danger-color);
+    text-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+    animation: critical-flash 0.5s ease-in-out infinite;
+    pointer-events: none;
+}
+
 .stat-value {
     font-size: 0.9rem;
     min-width: 40px;
@@ -560,6 +619,24 @@ body {
 @keyframes pulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.05); }
+}
+
+/* Pod Ejection Effect */
+.pod-ejection-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, rgba(255, 200, 0, 0.4), transparent);
+    pointer-events: none;
+    animation: pod-ejection-flash 1s ease-out;
+}
+
+@keyframes pod-ejection-flash {
+    0% { opacity: 0; transform: scale(0.5); }
+    50% { opacity: 1; }
+    100% { opacity: 0; transform: scale(2); }
 }
 
 /* Responsive Design */

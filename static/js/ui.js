@@ -155,12 +155,40 @@ class UIManager {
         const fuelBar = document.querySelector('.fuel-fill');
         if (fuelBar) fuelBar.style.width = `${(stats.fuel / 100) * 100}%`;
         
-        // Update ship condition
+        // Update ship condition or pod HP
         const shipValue = document.getElementById('ship-value');
-        if (shipValue) shipValue.textContent = stats.ship_condition;
-        
         const shipBar = document.querySelector('.ship-fill');
-        if (shipBar) shipBar.style.width = `${(stats.ship_condition / stats.max_ship_condition) * 100}%`;
+        const shipIcon = document.querySelector('.ship-icon');
+        
+        if (stats.in_pod_mode) {
+            // Show pod HP instead of ship condition
+            if (shipValue) shipValue.textContent = `POD: ${stats.pod_hp}`;
+            if (shipBar) {
+                shipBar.style.width = `${(stats.pod_hp / stats.pod_max_hp) * 100}%`;
+                shipBar.style.backgroundColor = '#FFA500';
+            }
+            if (shipIcon) {
+                shipIcon.innerHTML = '🛸'; // Pod icon
+            }
+        } else {
+            // Normal ship condition display
+            if (shipValue) shipValue.textContent = stats.ship_condition;
+            if (shipBar) {
+                shipBar.style.width = `${(stats.ship_condition / stats.max_ship_condition) * 100}%`;
+                shipBar.style.backgroundColor = ''; // Reset to default
+            }
+            if (shipIcon) {
+                shipIcon.innerHTML = '🚀'; // Ship icon
+            }
+        }
+        
+        // Pod indicator when owned but not in use
+        if (stats.has_flight_pod && !stats.in_pod_mode) {
+            const podIndicator = document.getElementById('pod-owned-indicator');
+            if (podIndicator) {
+                podIndicator.style.display = 'inline-block';
+            }
+        }
         
         // Update resources
         const wealthValue = document.getElementById('wealth-value');
@@ -189,13 +217,28 @@ class UIManager {
         
         // Update action buttons
         const repairBtn = document.getElementById('repair-btn');
-        if (repairBtn) {
-            if (gameState.at_repair_location && stats.wealth >= 100) {
-                repairBtn.disabled = false;
-                repairBtn.classList.add('available');
+        const actionPanel = document.getElementById('action-panel');
+        
+        if (stats.in_pod_mode) {
+            // Pod mode actions
+            this.updatePodModeActions(gameState, stats);
+        } else {
+            // Normal mode actions
+            if (repairBtn) {
+                if (gameState.at_repair_location && stats.wealth >= 100 && !stats.in_pod_mode) {
+                    repairBtn.disabled = false;
+                    repairBtn.classList.add('available');
+                } else {
+                    repairBtn.disabled = true;
+                    repairBtn.classList.remove('available');
+                }
+            }
+            
+            // Show buy pod button if at repair location
+            if (gameState.at_repair_location && !stats.has_flight_pod && stats.wealth >= 500) {
+                this.showBuyPodButton();
             } else {
-                repairBtn.disabled = true;
-                repairBtn.classList.remove('available');
+                this.hideBuyPodButton();
             }
         }
         
@@ -217,7 +260,9 @@ class UIManager {
         }
         
         if (shipBar) {
-            if (stats.ship_condition < 30) {
+            if (stats.in_pod_mode && stats.pod_hp < 10) {
+                shipBar.classList.add('critical');
+            } else if (!stats.in_pod_mode && stats.ship_condition < 30) {
                 shipBar.classList.add('critical');
             } else {
                 shipBar.classList.remove('critical');
@@ -380,6 +425,76 @@ class UIManager {
                 this.showScreen('mainMenu');
             }
         });
+    }
+    
+    updatePodModeActions(gameState, stats) {
+        // Disable most buttons in pod mode
+        const buttons = ['repair-btn', 'scan-btn', 'inventory-btn', 'quests-btn'];
+        buttons.forEach(btnId => {
+            const btn = document.getElementById(btnId);
+            if (btn) btn.disabled = true;
+        });
+        
+        // Show buy ship button if at location
+        if (gameState.at_repair_location && stats.wealth >= 400) {
+            this.showBuyShipButton();
+        } else {
+            this.hideBuyShipButton();
+        }
+    }
+    
+    showBuyPodButton() {
+        let buyPodBtn = document.getElementById('buy-pod-btn');
+        if (!buyPodBtn) {
+            // Create button if it doesn't exist
+            buyPodBtn = document.createElement('button');
+            buyPodBtn.id = 'buy-pod-btn';
+            buyPodBtn.className = 'action-btn available';
+            buyPodBtn.innerHTML = '<span class="btn-icon">🛸</span><span>Buy Pod</span>';
+            buyPodBtn.onclick = () => {
+                if (window.gameEngine) window.gameEngine.buyPod();
+            };
+            
+            const actionPanel = document.getElementById('action-panel');
+            if (actionPanel) {
+                actionPanel.appendChild(buyPodBtn);
+            }
+        }
+        buyPodBtn.style.display = 'flex';
+    }
+    
+    hideBuyPodButton() {
+        const buyPodBtn = document.getElementById('buy-pod-btn');
+        if (buyPodBtn) {
+            buyPodBtn.style.display = 'none';
+        }
+    }
+    
+    showBuyShipButton() {
+        let buyShipBtn = document.getElementById('buy-ship-btn');
+        if (!buyShipBtn) {
+            // Create button if it doesn't exist
+            buyShipBtn = document.createElement('button');
+            buyShipBtn.id = 'buy-ship-btn';
+            buyShipBtn.className = 'action-btn available';
+            buyShipBtn.innerHTML = '<span class="btn-icon">🚀</span><span>Buy Ship</span>';
+            buyShipBtn.onclick = () => {
+                if (window.gameEngine) window.gameEngine.buyShip();
+            };
+            
+            const actionPanel = document.getElementById('action-panel');
+            if (actionPanel) {
+                actionPanel.appendChild(buyShipBtn);
+            }
+        }
+        buyShipBtn.style.display = 'flex';
+    }
+    
+    hideBuyShipButton() {
+        const buyShipBtn = document.getElementById('buy-ship-btn');
+        if (buyShipBtn) {
+            buyShipBtn.style.display = 'none';
+        }
     }
 }
 
