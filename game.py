@@ -14,12 +14,14 @@ player_stats = {
     "health": config.STARTING_HEALTH,
     "wealth": config.STARTING_WEALTH,
     "ship_condition": config.STARTING_SHIP_CONDITION,
-    "fuel": config.STARTING_FUEL
+    "fuel": config.STARTING_FUEL,
+    "food": config.STARTING_FOOD
 }
 
 # Quest tracking
 active_quest = None
 turn_count = 0
+milestones_reached = 0
 
 def load_game():
     try:
@@ -31,6 +33,7 @@ def load_game():
             "wealth": config.STARTING_WEALTH,
             "ship_condition": config.STARTING_SHIP_CONDITION,
             "fuel": config.STARTING_FUEL,
+            "food": config.STARTING_FOOD,
             "active_quest": None,
             "turn_count": 0
         }
@@ -46,7 +49,8 @@ def reset_game():
         "health": config.STARTING_HEALTH,
         "wealth": config.STARTING_WEALTH,
         "ship_condition": config.STARTING_SHIP_CONDITION,
-        "fuel": config.STARTING_FUEL
+        "fuel": config.STARTING_FUEL,
+        "food": config.STARTING_FOOD
     }
     active_quest = None
     turn_count = 0
@@ -55,6 +59,7 @@ def reset_game():
         "wealth": player_stats['wealth'],
         "ship_condition": player_stats['ship_condition'],
         "fuel": player_stats['fuel'],
+        "food": player_stats['food'],
         "active_quest": active_quest,
         "turn_count": turn_count
     }
@@ -72,7 +77,8 @@ def start_game():
         "health": saved_state["health"],
         "wealth": saved_state["wealth"],
         "ship_condition": saved_state["ship_condition"],
-        "fuel": saved_state.get("fuel", config.STARTING_FUEL)
+        "fuel": saved_state.get("fuel", config.STARTING_FUEL),
+        "food": saved_state.get("food", config.STARTING_FOOD)
     })
     active_quest = saved_state["active_quest"]
     turn_count = saved_state["turn_count"]
@@ -80,7 +86,7 @@ def start_game():
     game_loop()
 
 def game_loop():
-    global active_quest, turn_count
+    global active_quest, turn_count, milestones_reached
     while True:
         turn_count += 1
         if player_stats['health'] <= 0:
@@ -124,16 +130,33 @@ def game_loop():
             else:
                 break
 
-        # Refined event frequency for more balanced and engaging gameplay
+        # Adjusted event frequency for balanced gameplay
         event_chance = random.random() * 100
-        if event_chance < config.QUEST_OFFER_CHANCE + 15 and not active_quest:  # Adjusted chance for quests
+        if event_chance < config.QUEST_OFFER_CHANCE + 15 and not active_quest:  # Moderately increased chance for quests
             active_quest = offer_quest(player_stats, active_quest)
             if active_quest:
                 continue
-        elif event_chance < config.RANDOM_EVENT_CHANCE + 25:  # Adjusted chance for random events
+        elif event_chance < config.RANDOM_EVENT_CHANCE + 25:  # Moderately increased chance for random events
             random_event(player_stats)
         else:
             standard_navigation(player_stats)
+
+        # Milestone feedback every 5 turns
+        if turn_count % 5 == 0:
+            milestones_reached += 1
+            display_event(f"Milestone Reached: You've survived {turn_count} turns! Keep exploring the cosmos.")
+
+        # Option to consume food for health recovery if health is low and food is available
+        if player_stats['health'] < 50 and player_stats['food'] > 0:
+            display_event("Your health is low. Would you like to consume food to recover?")
+            display_choices(["Yes, consume 10 food to recover 20 health.", "No, conserve food supplies."])
+            choice = input()
+            if choice == '1' and player_stats['food'] >= 10:
+                player_stats['food'] -= 10
+                player_stats['health'] = min(player_stats['health'] + 20, config.STARTING_HEALTH)
+                display_event("You consume food supplies. Health increased by 20!")
+            else:
+                display_event("You decide to conserve food supplies.")
 
         display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
         # Automatically save progress after each action
@@ -142,6 +165,7 @@ def game_loop():
             "wealth": player_stats['wealth'],
             "ship_condition": player_stats['ship_condition'],
             "fuel": player_stats['fuel'],
+            "food": player_stats['food'],
             "active_quest": active_quest,
             "turn_count": turn_count
         })

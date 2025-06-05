@@ -31,8 +31,8 @@ def random_event(player_stats):
         ("Face pirate ambush", "health", -25, "Pirates attack! Health decreased."),
         ("Discover cosmic phenomenon", "wealth", 80, "You document a rare event! Wealth increased."),
         ("Receive distress call", "ship_condition", -15, "Helping out strains your ship! Ship condition decreased."),
-        ("Find food supplies", "health", 20, "You discover food supplies! Health increased."),
-        ("Scavenge fuel reserves", "fuel", 25, "You scavenge fuel reserves! Fuel increased.")
+        ("Discover food supplies", "food", 20, "You find edible resources! Food supplies increased."),
+        ("Stumble upon hidden fuel cache", "fuel", 15, "You uncover extra fuel reserves! Fuel increased.")
     ]
     event, stat, change, message = random.choice(events)
     print(f"\nEvent: {event}")

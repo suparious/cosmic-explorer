@@ -14,20 +14,21 @@ class GameConfig:
     STARTING_HEALTH = int(os.getenv('STARTING_HEALTH', 100))
     STARTING_WEALTH = int(os.getenv('STARTING_WEALTH', 500))
     STARTING_SHIP_CONDITION = int(os.getenv('STARTING_SHIP_CONDITION', 100))
-    STARTING_FUEL = int(os.getenv('STARTING_FUEL', 100))  # New stat for fuel management
+    STARTING_FUEL = int(os.getenv('STARTING_FUEL', 100))
+    STARTING_FOOD = int(os.getenv('STARTING_FOOD', 50))  # New stat for food supplies
     
     # Game victory and loss conditions
     VICTORY_WEALTH_THRESHOLD = int(os.getenv('VICTORY_WEALTH_THRESHOLD', 2000))
-    MINIMUM_FUEL_THRESHOLD = int(os.getenv('MINIMUM_FUEL_THRESHOLD', 0))  # Game over if fuel runs out
+    MINIMUM_FUEL_THRESHOLD = int(os.getenv('MINIMUM_FUEL_THRESHOLD', 0))
     
     # Event probabilities (as percentages)
     QUEST_OFFER_CHANCE = float(os.getenv('QUEST_OFFER_CHANCE', 30))
     RANDOM_EVENT_CHANCE = float(os.getenv('RANDOM_EVENT_CHANCE', 60))
-    FUEL_CONSUMPTION_RATE = int(os.getenv('FUEL_CONSUMPTION_RATE', 5))  # Fuel used per navigation action
+    FUEL_CONSUMPTION_RATE = int(os.getenv('FUEL_CONSUMPTION_RATE', 5))
     
     # Difficulty settings
-    DIFFICULTY_LEVEL = os.getenv('DIFFICULTY_LEVEL', 'Medium')  # Easy, Medium, Hard
-    MAX_TURNS = int(os.getenv('MAX_TURNS', 50))  # Maximum turns before game ends
+    DIFFICULTY_LEVEL = os.getenv('DIFFICULTY_LEVEL', 'Medium')
+    MAX_TURNS = int(os.getenv('MAX_TURNS', 50))
     
     # Save file location
     SAVE_FILE_PATH = os.getenv('SAVE_FILE_PATH', '/scratch-space/new_game_folder/save_game.json')
