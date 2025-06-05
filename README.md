@@ -1,6 +1,6 @@
 # Cosmic Explorer
 
-A text-based adventure game set in the vastness of space, where you explore the cosmos, manage resources, and make critical decisions to survive and thrive as a legendary explorer.
+A sci-fi adventure game set in the vastness of space, where you explore the cosmos, manage resources, and make critical decisions to survive and thrive as a legendary explorer.
 
 ## How to Play
 

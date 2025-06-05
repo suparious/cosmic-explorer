@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Explorer - Space Adventure Game</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/game.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="screen active">
+            <div class="stars"></div>
+            <div class="loading-content">
+                <h1 class="game-title">COSMIC EXPLORER</h1>
+                <div class="loading-bar">
+                    <div class="loading-progress"></div>
+                </div>
+                <p class="loading-text">Initializing ship systems...</p>
+            </div>
+        </div>
+
+        <!-- Main Menu -->
+        <div id="main-menu" class="screen">
+            <div class="stars"></div>
+            <div class="menu-content">
+                <h1 class="game-title">COSMIC EXPLORER</h1>
+                <p class="tagline">Journey through the stars</p>
+                <div class="menu-buttons">
+                    <button class="menu-btn primary" onclick="gameUI.startNewGame()">New Journey</button>
+                    <button class="menu-btn" onclick="gameUI.loadGame()">Continue</button>
+                    <button class="menu-btn" onclick="gameUI.showSettings()">Settings</button>
+                    <button class="menu-btn" onclick="gameUI.showCredits()">Credits</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <!-- Main Game Canvas -->
+            <canvas id="game-canvas"></canvas>
+            
+            <!-- UI Overlay -->
+            <div id="ui-overlay">
+                <!-- Top HUD -->
+                <div id="top-hud" class="hud-panel">
+                    <div class="stat-group">
+                        <div class="stat-item">
+                            <div class="stat-icon health-icon"></div>
+                            <div class="stat-bar">
+                                <div class="stat-fill health-fill" style="width: 100%"></div>
+                            </div>
+                            <span class="stat-value" id="health-value">100</span>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon fuel-icon"></div>
+                            <div class="stat-bar">
+                                <div class="stat-fill fuel-fill" style="width: 100%"></div>
+                            </div>
+                            <span class="stat-value" id="fuel-value">100</span>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon ship-icon"></div>
+                            <div class="stat-bar">
+                                <div class="stat-fill ship-fill" style="width: 100%"></div>
+                            </div>
+                            <span class="stat-value" id="ship-value">100</span>
+                        </div>
+                    </div>
+                    <div class="resource-group">
+                        <div class="resource-item">
+                            <span class="resource-icon">💰</span>
+                            <span class="resource-value" id="wealth-value">500</span>
+                        </div>
+                        <div class="resource-item">
+                            <span class="resource-icon">🍞</span>
+                            <span class="resource-value" id="food-value">50</span>
+                        </div>
+                        <div class="resource-item">
+                            <span class="resource-label">Turn:</span>
+                            <span class="resource-value" id="turn-value">0/50</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Interface -->
+                <div id="bottom-interface" class="interface-panel">
+                    <!-- Event Display -->
+                    <div id="event-display" class="event-panel">
+                        <div class="event-header">SHIP LOG</div>
+                        <div id="event-content" class="event-content">
+                            <p>Welcome to Cosmic Explorer! Your journey begins...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div id="action-panel" class="action-panel">
+                        <button class="action-btn" onclick="gameEngine.navigate()">
+                            <span class="btn-icon">🚀</span>
+                            <span>Navigate</span>
+                        </button>
+                        <button class="action-btn" onclick="gameEngine.scanArea()">
+                            <span class="btn-icon">📡</span>
+                            <span>Scan</span>
+                        </button>
+                        <button class="action-btn" id="repair-btn" onclick="gameEngine.repair()" disabled>
+                            <span class="btn-icon">🔧</span>
+                            <span>Repair</span>
+                        </button>
+                        <button class="action-btn" onclick="gameEngine.showInventory()">
+                            <span class="btn-icon">📦</span>
+                            <span>Inventory</span>
+                        </button>
+                        <button class="action-btn" onclick="gameEngine.showQuests()">
+                            <span class="btn-icon">📜</span>
+                            <span>Quests</span>
+                        </button>
+                        <button class="action-btn" onclick="gameEngine.showMap()">
+                            <span class="btn-icon">🗺️</span>
+                            <span>Star Map</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal for choices -->
+                <div id="choice-modal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <h3 id="choice-title">Make a Choice</h3>
+                        <div id="choice-list" class="choice-list"></div>
+                    </div>
+                </div>
+
+                <!-- Quest Indicator -->
+                <div id="quest-indicator" class="quest-indicator" style="display: none;">
+                    <div class="quest-icon">📜</div>
+                    <div class="quest-info">
+                        <div class="quest-name" id="quest-name">Unknown Quest</div>
+                        <div class="quest-status" id="quest-status">In Progress</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div id="settings-screen" class="screen">
+            <div class="settings-content">
+                <h2>Settings</h2>
+                <div class="settings-group">
+                    <label>Master Volume</label>
+                    <input type="range" id="master-volume" min="0" max="100" value="70">
+                </div>
+                <div class="settings-group">
+                    <label>Sound Effects</label>
+                    <input type="range" id="sfx-volume" min="0" max="100" value="80">
+                </div>
+                <div class="settings-group">
+                    <label>Music</label>
+                    <input type="range" id="music-volume" min="0" max="100" value="60">
+                </div>
+                <div class="settings-group">
+                    <label>Graphics Quality</label>
+                    <select id="graphics-quality">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                <button class="menu-btn" onclick="gameUI.hideSettings()">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio Elements -->
+    <audio id="bg-music" loop>
+        <source src="{{ url_for('static', filename='sounds/space-ambience.mp3') }}" type="audio/mpeg">
+    </audio>
+    <audio id="sfx-navigate" src="{{ url_for('static', filename='sounds/engine.mp3') }}"></audio>
+    <audio id="sfx-scan" src="{{ url_for('static', filename='sounds/scan.mp3') }}"></audio>
+    <audio id="sfx-repair" src="{{ url_for('static', filename='sounds/repair.mp3') }}"></audio>
+    <audio id="sfx-alert" src="{{ url_for('static', filename='sounds/alert.mp3') }}"></audio>
+    <audio id="sfx-success" src="{{ url_for('static', filename='sounds/success.mp3') }}"></audio>
+
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    
+    <!-- Game Scripts -->
+    <script src="{{ url_for('static', filename='js/config.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/renderer.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
