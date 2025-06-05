@@ -1,0 +1,4 @@
+# Requirements for Cosmic Explorer
+python-dotenv>=0.19.0
+websockets>=10.0  # For future WebSocket integration with UI
+aiohttp>=3.8.0    # For potential async HTTP requests to data services
