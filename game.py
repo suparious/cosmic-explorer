@@ -97,6 +97,8 @@ def upgrade_ship():
         player_stats['wealth'] -= cost
         player_stats['ship_condition'] = min(player_stats['ship_condition'] + 30, 100)
         display_event(f"Ship upgraded! Spent {cost} wealth. Ship condition improved by 30.")
+        # Immediately refresh the dashboard to show updated stats
+        display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
     else:
         display_event("Insufficient wealth to upgrade ship. You need at least 300 wealth.")
 
@@ -107,6 +109,8 @@ def buy_flight_pod():
         player_stats['wealth'] -= cost
         player_stats['has_flight_pod'] = True
         display_event(f"Flight pod purchased for {cost} wealth! You can now use it if your ship is destroyed to reach safety.")
+        # Immediately refresh the dashboard to show updated wealth and flight pod status
+        display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
     else:
         display_event("Insufficient wealth to buy a flight pod. You need at least 500 wealth.")
 
@@ -136,6 +140,8 @@ def use_flight_pod():
                 player_stats['wealth'] -= 400
                 player_stats['ship_condition'] = config.STARTING_SHIP_CONDITION
                 display_event("New ship purchased for 400 wealth! Your ship condition is fully restored. Ready to explore again!")
+                # Refresh dashboard to show updated stats after ship purchase
+                display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
                 return True
             else:
                 if player_stats['wealth'] < 400:
@@ -164,7 +170,6 @@ def game_loop():
             display_event("Game Over: Your ship is destroyed. You're stranded in space.")
             if player_stats['has_flight_pod']:
                 if use_flight_pod():
-                    display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
                     continue  # Continue game if new ship is purchased
                 else:
                     if player_stats['health'] <= 0:
@@ -231,6 +236,7 @@ def game_loop():
                 player_stats['food'] -= 10
                 player_stats['health'] = min(player_stats['health'] + 20, config.STARTING_HEALTH)
                 display_event("You consume food supplies. Health increased by 20!")
+                display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
             else:
                 display_event("You decide to conserve food supplies.")
 
@@ -245,8 +251,10 @@ def game_loop():
             choice = input()
             if choice == '1':
                 upgrade_ship()
+                continue  # Skip further dashboard display since upgrade_ship already does it
             elif choice == '2' and not player_stats['has_flight_pod'] and player_stats['wealth'] >= 500:
                 buy_flight_pod()
+                continue  # Skip further dashboard display since buy_flight_pod already does it
             else:
                 display_event("You decide to do nothing with your wealth for now.")
 
