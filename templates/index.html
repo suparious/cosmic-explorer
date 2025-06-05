@@ -30,10 +30,10 @@
                 <h1 class="game-title">COSMIC EXPLORER</h1>
                 <p class="tagline">Journey through the stars</p>
                 <div class="menu-buttons">
-                    <button class="menu-btn primary" onclick="gameUI.startNewGame()">New Journey</button>
-                    <button class="menu-btn" onclick="gameUI.loadGame()">Continue</button>
-                    <button class="menu-btn" onclick="gameUI.showSettings()">Settings</button>
-                    <button class="menu-btn" onclick="gameUI.showCredits()">Credits</button>
+                    <button class="menu-btn primary" onclick="if(window.gameUI) gameUI.startNewGame()">New Journey</button>
+                    <button class="menu-btn" onclick="if(window.gameUI) gameUI.loadGame()">Continue</button>
+                    <button class="menu-btn" onclick="if(window.gameUI) gameUI.showSettings()">Settings</button>
+                    <button class="menu-btn" onclick="if(window.gameUI) gameUI.showCredits()">Credits</button>
                 </div>
             </div>
         </div>
@@ -98,27 +98,27 @@
                     
                     <!-- Action Buttons -->
                     <div id="action-panel" class="action-panel">
-                        <button class="action-btn" onclick="gameEngine.navigate()">
+                        <button class="action-btn" onclick="if(window.gameEngine) gameEngine.navigate()">
                             <span class="btn-icon">🚀</span>
                             <span>Navigate</span>
                         </button>
-                        <button class="action-btn" onclick="gameEngine.scanArea()">
+                        <button class="action-btn" onclick="if(window.gameEngine) gameEngine.scanArea()">
                             <span class="btn-icon">📡</span>
                             <span>Scan</span>
                         </button>
-                        <button class="action-btn" id="repair-btn" onclick="gameEngine.repair()" disabled>
+                        <button class="action-btn" id="repair-btn" onclick="if(window.gameEngine) gameEngine.repair()" disabled>
                             <span class="btn-icon">🔧</span>
                             <span>Repair</span>
                         </button>
-                        <button class="action-btn" onclick="gameEngine.showInventory()">
+                        <button class="action-btn" onclick="if(window.gameEngine) gameEngine.showInventory()">
                             <span class="btn-icon">📦</span>
                             <span>Inventory</span>
                         </button>
-                        <button class="action-btn" onclick="gameEngine.showQuests()">
+                        <button class="action-btn" onclick="if(window.gameEngine) gameEngine.showQuests()">
                             <span class="btn-icon">📜</span>
                             <span>Quests</span>
                         </button>
-                        <button class="action-btn" onclick="gameEngine.showMap()">
+                        <button class="action-btn" onclick="if(window.gameEngine) gameEngine.showMap()">
                             <span class="btn-icon">🗺️</span>
                             <span>Star Map</span>
                         </button>
@@ -168,20 +168,19 @@
                         <option value="high">High</option>
                     </select>
                 </div>
-                <button class="menu-btn" onclick="gameUI.hideSettings()">Back</button>
+                <button class="menu-btn" onclick="if(window.gameUI) gameUI.hideSettings()">Back</button>
             </div>
         </div>
     </div>
 
     <!-- Audio Elements -->
-    <audio id="bg-music" loop>
-        <source src="{{ url_for('static', filename='sounds/space-ambience.mp3') }}" type="audio/mpeg">
-    </audio>
-    <audio id="sfx-navigate" src="{{ url_for('static', filename='sounds/engine.mp3') }}"></audio>
-    <audio id="sfx-scan" src="{{ url_for('static', filename='sounds/scan.mp3') }}"></audio>
-    <audio id="sfx-repair" src="{{ url_for('static', filename='sounds/repair.mp3') }}"></audio>
-    <audio id="sfx-alert" src="{{ url_for('static', filename='sounds/alert.mp3') }}"></audio>
-    <audio id="sfx-success" src="{{ url_for('static', filename='sounds/success.mp3') }}"></audio>
+    <!-- Sound files are placeholders - using dynamic audio generation instead -->
+    <audio id="bg-music" loop></audio>
+    <audio id="sfx-navigate"></audio>
+    <audio id="sfx-scan"></audio>
+    <audio id="sfx-repair"></audio>
+    <audio id="sfx-alert"></audio>
+    <audio id="sfx-success"></audio>
 
     <!-- Socket.IO -->
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>

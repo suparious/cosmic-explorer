@@ -2,24 +2,46 @@
 window.addEventListener('DOMContentLoaded', async () => {
     console.log('Initializing Cosmic Explorer...');
     
-    // Create global instances
-    window.gameEngine = new GameEngine();
-    window.gameUI = window.gameEngine.uiManager;
-    window.audioManager = window.gameEngine.audioManager;
-    
-    // Initialize game engine
-    await window.gameEngine.init();
-    
-    // Simulate loading
-    setTimeout(() => {
-        // Hide loading screen and show main menu
-        window.gameUI.showScreen('mainMenu');
+    try {
+        // Create global instances
+        window.gameEngine = new GameEngine();
         
-        // Play background music on first user interaction
-        document.addEventListener('click', () => {
-            window.audioManager.playMusic();
-        }, { once: true });
-    }, 2000);
+        // Initialize game engine
+        await window.gameEngine.init();
+        
+        // Set global references after initialization
+        window.gameUI = window.gameEngine.uiManager;
+        window.audioManager = window.gameEngine.audioManager;
+        
+        // Check if UI manager was created successfully
+        if (!window.gameUI) {
+            throw new Error('UI Manager failed to initialize');
+        }
+        
+        // Simulate loading
+        setTimeout(() => {
+            // Hide loading screen and show main menu
+            if (window.gameUI) {
+                window.gameUI.showScreen('mainMenu');
+            } else {
+                // Fallback: manually show main menu if UIManager failed
+                console.warn('UIManager not available, using fallback');
+                const loadingScreen = document.getElementById('loading-screen');
+                const mainMenu = document.getElementById('main-menu');
+                if (loadingScreen) loadingScreen.classList.remove('active');
+                if (mainMenu) mainMenu.classList.add('active');
+            }
+            
+            // Play background music on first user interaction
+            document.addEventListener('click', () => {
+                if (window.audioManager) {
+                    window.audioManager.playMusic();
+                }
+            }, { once: true });
+        }, 2000);
+    } catch (error) {
+        console.error('Failed to initialize game:', error);
+    }
     
     // Handle window resize
     window.addEventListener('resize', () => {
@@ -35,7 +57,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     
     // Add keyboard controls
     document.addEventListener('keydown', (e) => {
-        if (window.gameUI.currentScreen !== 'game') return;
+        if (!window.gameUI || window.gameUI.currentScreen !== 'game') return;
         
         switch(e.key) {
             case '1':

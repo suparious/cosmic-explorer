@@ -31,7 +31,7 @@ class GameConfig:
     MAX_TURNS = int(os.getenv('MAX_TURNS', 50))
     
     # Save file location
-    SAVE_FILE_PATH = os.getenv('SAVE_FILE_PATH', '/scratch-space/new_game_folder/save_game.json')
+    SAVE_FILE_PATH = os.getenv('SAVE_FILE_PATH', 'save_game.json')  # Save in current directory
     
     # WebSocket and server settings for future UI integration
     WEBSOCKET_HOST = os.getenv('WEBSOCKET_HOST', 'localhost')

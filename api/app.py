@@ -6,7 +6,7 @@ Provides REST endpoints and WebSocket support for the graphical frontend
 
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room
 import json
 import os
 import sys

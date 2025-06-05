@@ -42,24 +42,38 @@ class AudioManager {
     }
     
     playSound(soundName) {
-        const sound = this.sounds[soundName];
-        if (sound) {
-            // Clone and play to allow overlapping sounds
-            const clone = sound.cloneNode();
-            clone.volume = this.sfxVolume * this.masterVolume;
-            clone.play().catch(err => console.log('Audio play failed:', err));
+        // Use dynamic sound generation instead of files
+        switch(soundName) {
+            case 'navigate':
+                this.playWarpSound();
+                break;
+            case 'scan':
+                this.playScanSound();
+                break;
+            case 'repair':
+                this.playRepairSound();
+                break;
+            case 'alert':
+                this.playAlertSound();
+                break;
+            case 'success':
+                this.playSuccessSound();
+                break;
+            default:
+                console.log('Unknown sound:', soundName);
         }
     }
     
     playMusic() {
-        if (this.music) {
-            this.music.play().catch(err => console.log('Music play failed:', err));
-        }
+        // Generate ambient space music dynamically
+        this.createAmbientMusic();
     }
     
     pauseMusic() {
-        if (this.music) {
-            this.music.pause();
+        // Stop ambient music
+        if (this.ambientContext) {
+            this.ambientContext.close();
+            this.ambientContext = null;
         }
     }
     
@@ -174,6 +188,117 @@ class AudioManager {
         oscillator2.start(audioContext.currentTime + duration / 2);
         oscillator1.stop(audioContext.currentTime + duration / 2);
         oscillator2.stop(audioContext.currentTime + duration);
+    }
+    
+    playScanSound() {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(2000, audioContext.currentTime + 0.3);
+        oscillator.frequency.exponentialRampToValueAtTime(1000, audioContext.currentTime + 0.6);
+        
+        gainNode.gain.setValueAtTime(this.sfxVolume * this.masterVolume * 0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.6);
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.6);
+    }
+    
+    playRepairSound() {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.type = 'triangle';
+        oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+        oscillator.frequency.linearRampToValueAtTime(400, audioContext.currentTime + 0.2);
+        oscillator.frequency.linearRampToValueAtTime(300, audioContext.currentTime + 0.4);
+        
+        gainNode.gain.setValueAtTime(this.sfxVolume * this.masterVolume * 0.4, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.4);
+    }
+    
+    playSuccessSound() {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator1 = audioContext.createOscillator();
+        const oscillator2 = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator1.type = 'sine';
+        oscillator1.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+        oscillator2.type = 'sine';
+        oscillator2.frequency.setValueAtTime(659.25, audioContext.currentTime); // E5
+        
+        gainNode.gain.setValueAtTime(this.sfxVolume * this.masterVolume * 0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        
+        oscillator1.connect(gainNode);
+        oscillator2.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator1.start(audioContext.currentTime);
+        oscillator2.start(audioContext.currentTime + 0.1);
+        oscillator1.stop(audioContext.currentTime + 0.3);
+        oscillator2.stop(audioContext.currentTime + 0.3);
+    }
+    
+    createAmbientMusic() {
+        // Create a simple ambient drone for space atmosphere
+        if (this.ambientContext) {
+            // Stop existing ambient if any
+            this.ambientContext.close();
+        }
+        
+        this.ambientContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Create multiple oscillators for a rich drone
+        const oscillators = [];
+        const frequencies = [55, 110, 165, 220]; // Low frequencies for space feel
+        
+        frequencies.forEach((freq, index) => {
+            const osc = this.ambientContext.createOscillator();
+            const gain = this.ambientContext.createGain();
+            const filter = this.ambientContext.createBiquadFilter();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, this.ambientContext.currentTime);
+            
+            // Slight frequency modulation for movement
+            const lfo = this.ambientContext.createOscillator();
+            const lfoGain = this.ambientContext.createGain();
+            lfo.frequency.setValueAtTime(0.1 + index * 0.05, this.ambientContext.currentTime);
+            lfoGain.gain.setValueAtTime(2, this.ambientContext.currentTime);
+            lfo.connect(lfoGain);
+            lfoGain.connect(osc.frequency);
+            lfo.start();
+            
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(200 + index * 100, this.ambientContext.currentTime);
+            
+            gain.gain.setValueAtTime(this.musicVolume * this.masterVolume * 0.1, this.ambientContext.currentTime);
+            
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.ambientContext.destination);
+            
+            osc.start();
+            oscillators.push(osc);
+        });
+        
+        // Store reference for stopping later
+        this.ambientOscillators = oscillators;
     }
 }
 

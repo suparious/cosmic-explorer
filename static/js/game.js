@@ -17,22 +17,43 @@ class GameEngine {
     }
     
     async init() {
-        // Initialize socket connection
-        this.socket = io();
-        this.setupSocketHandlers();
-        
-        // Initialize subsystems
-        const canvas = document.getElementById('game-canvas');
-        this.renderer = new Renderer(canvas);
-        this.particleSystem = new ParticleSystem();
-        this.audioManager = new AudioManager();
-        this.uiManager = new UIManager();
-        
-        // Generate initial space environment
-        this.generateSpaceEnvironment();
-        
-        // Start render loop
-        this.startRenderLoop();
+        try {
+            console.log('GameEngine.init() starting...');
+            
+            // Initialize socket connection
+            this.socket = io();
+            this.setupSocketHandlers();
+            
+            // Initialize subsystems
+            const canvas = document.getElementById('game-canvas');
+            if (!canvas) {
+                throw new Error('Canvas element not found');
+            }
+            
+            console.log('Creating Renderer...');
+            this.renderer = new Renderer(canvas);
+            
+            console.log('Creating ParticleSystem...');
+            this.particleSystem = new ParticleSystem();
+            
+            console.log('Creating AudioManager...');
+            this.audioManager = new AudioManager();
+            
+            console.log('Creating UIManager...');
+            this.uiManager = new UIManager();
+            console.log('UIManager created:', this.uiManager);
+            
+            // Generate initial space environment
+            this.generateSpaceEnvironment();
+            
+            // Start render loop
+            this.startRenderLoop();
+            
+            console.log('GameEngine.init() completed successfully');
+        } catch (error) {
+            console.error('Error in GameEngine.init():', error);
+            throw error;
+        }
     }
     
     setupSocketHandlers() {
