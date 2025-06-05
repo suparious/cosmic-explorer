@@ -3,6 +3,7 @@
 from config import config
 
 def standard_navigation(player_stats):
+    at_repair_location = False
     print('\nYou chart a course through space.')
     print('1. Investigate a nearby planet.')
     print('2. Continue on your planned route.')
@@ -12,7 +13,11 @@ def standard_navigation(player_stats):
         player_stats['ship_condition'] -= 5
         player_stats['fuel'] -= config.FUEL_CONSUMPTION_RATE
         print(f"Exploration takes a toll. Ship condition slightly decreased. Fuel consumed: {config.FUEL_CONSUMPTION_RATE}.")
+        # Set repair location to true when at a planet
+        at_repair_location = True
+        print("You've docked at a planetary outpost. Repairs are available here.")
     elif choice == '2':
         print('You proceed smoothly on your route.')
         player_stats['fuel'] -= config.FUEL_CONSUMPTION_RATE
         print(f"Fuel consumed during navigation: {config.FUEL_CONSUMPTION_RATE}.")
+    return at_repair_location

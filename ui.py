@@ -78,7 +78,7 @@ def display_dashboard(player_stats, active_quest, turn_count, max_turns):
         print(term.cyan_bold + "=== Cosmic Explorer Dashboard ===" + term.normal)
         print(term.green_bold + f"Health: {player_stats['health']}" + term.normal)
         print(term.yellow_bold + f"Wealth: {player_stats['wealth']}" + term.normal)
-        print(term.blue_bold + f"Ship Condition: {player_stats['ship_condition']}" + term.normal)
+        print(term.blue_bold + f"Ship Condition: {player_stats['ship_condition']}/{player_stats['max_ship_condition']}" + term.normal)
         print(term.red_bold + get_fuel_gauge(player_stats['fuel']) + term.normal)
         print(term.green_bold + f"Food Supplies: {player_stats['food']}" + term.normal)
         if active_quest:

@@ -14,6 +14,7 @@ player_stats = {
     "health": config.STARTING_HEALTH,
     "wealth": config.STARTING_WEALTH,
     "ship_condition": config.STARTING_SHIP_CONDITION,
+    "max_ship_condition": config.STARTING_SHIP_CONDITION,  # Track maximum ship condition
     "fuel": config.STARTING_FUEL,
     "food": config.STARTING_FOOD,
     "has_flight_pod": False  # Track flight pod ownership
@@ -23,6 +24,7 @@ player_stats = {
 active_quest = None
 turn_count = 0
 milestones_reached = 0
+at_repair_location = False  # Track if player is at a location where repairs are possible
 
 def load_game():
     try:
@@ -33,11 +35,13 @@ def load_game():
             "health": config.STARTING_HEALTH,
             "wealth": config.STARTING_WEALTH,
             "ship_condition": config.STARTING_SHIP_CONDITION,
+            "max_ship_condition": config.STARTING_SHIP_CONDITION,
             "fuel": config.STARTING_FUEL,
             "food": config.STARTING_FOOD,
             "has_flight_pod": False,
             "active_quest": None,
-            "turn_count": 0
+            "turn_count": 0,
+            "at_repair_location": False
         }
 
 def save_game(state):
@@ -46,32 +50,36 @@ def save_game(state):
     print("Progress saved automatically.")
 
 def reset_game():
-    global player_stats, active_quest, turn_count
+    global player_stats, active_quest, turn_count, at_repair_location
     player_stats = {
         "health": config.STARTING_HEALTH,
         "wealth": config.STARTING_WEALTH,
         "ship_condition": config.STARTING_SHIP_CONDITION,
+        "max_ship_condition": config.STARTING_SHIP_CONDITION,
         "fuel": config.STARTING_FUEL,
         "food": config.STARTING_FOOD,
         "has_flight_pod": False
     }
     active_quest = None
     turn_count = 0
+    at_repair_location = False
     new_state = {
         "health": player_stats['health'],
         "wealth": player_stats['wealth'],
         "ship_condition": player_stats['ship_condition'],
+        "max_ship_condition": player_stats['max_ship_condition'],
         "fuel": player_stats['fuel'],
         "food": player_stats['food'],
         "has_flight_pod": player_stats['has_flight_pod'],
         "active_quest": active_quest,
-        "turn_count": turn_count
+        "turn_count": turn_count,
+        "at_repair_location": at_repair_location
     }
     save_game(new_state)
     print("Game reset. Starting a new adventure...")
 
 def start_game():
-    global player_stats, active_quest, turn_count
+    global player_stats, active_quest, turn_count, at_repair_location
     print(f'Welcome to {config.GAME_NAME}! (Version: {config.GAME_VERSION})')
     print('Your journey through the stars begins now...')
     print('You are on board your spaceship, ready to explore the unknown.')
@@ -81,12 +89,14 @@ def start_game():
         "health": saved_state["health"],
         "wealth": saved_state["wealth"],
         "ship_condition": saved_state["ship_condition"],
+        "max_ship_condition": saved_state.get("max_ship_condition", config.STARTING_SHIP_CONDITION),
         "fuel": saved_state.get("fuel", config.STARTING_FUEL),
         "food": saved_state.get("food", config.STARTING_FOOD),
         "has_flight_pod": saved_state.get("has_flight_pod", False)
     })
     active_quest = saved_state["active_quest"]
     turn_count = saved_state["turn_count"]
+    at_repair_location = saved_state.get("at_repair_location", False)
     display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
     game_loop()
 
@@ -95,12 +105,26 @@ def upgrade_ship():
     cost = 300
     if player_stats['wealth'] >= cost:
         player_stats['wealth'] -= cost
-        player_stats['ship_condition'] = min(player_stats['ship_condition'] + 30, 100)
-        display_event(f"Ship upgraded! Spent {cost} wealth. Ship condition improved by 30.")
-        # Immediately refresh the dashboard to show updated stats
+        player_stats['max_ship_condition'] += 20
+        player_stats['ship_condition'] = player_stats['max_ship_condition']
+        display_event(f"Ship upgraded! Spent {cost} wealth. Maximum ship condition increased by 20 to {player_stats['max_ship_condition']} and fully restored.")
         display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
     else:
         display_event("Insufficient wealth to upgrade ship. You need at least 300 wealth.")
+
+def repair_ship():
+    global player_stats
+    cost = 100
+    if not at_repair_location:
+        display_event("You need to be at a planet or outpost to repair your ship.")
+        return
+    if player_stats['wealth'] >= cost:
+        player_stats['wealth'] -= cost
+        player_stats['ship_condition'] = player_stats['max_ship_condition']
+        display_event(f"Ship repaired at outpost! Spent {cost} wealth. Ship condition restored to {player_stats['ship_condition']}.")
+        display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
+    else:
+        display_event("Insufficient wealth to repair ship. You need at least 100 wealth.")
 
 def buy_flight_pod():
     global player_stats
@@ -109,7 +133,6 @@ def buy_flight_pod():
         player_stats['wealth'] -= cost
         player_stats['has_flight_pod'] = True
         display_event(f"Flight pod purchased for {cost} wealth! You can now use it if your ship is destroyed to reach safety.")
-        # Immediately refresh the dashboard to show updated wealth and flight pod status
         display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
     else:
         display_event("Insufficient wealth to buy a flight pod. You need at least 500 wealth.")
@@ -138,9 +161,8 @@ def use_flight_pod():
             ship_choice = input()
             if ship_choice == '1' and player_stats['wealth'] >= 400:
                 player_stats['wealth'] -= 400
-                player_stats['ship_condition'] = config.STARTING_SHIP_CONDITION
+                player_stats['ship_condition'] = player_stats['max_ship_condition']
                 display_event("New ship purchased for 400 wealth! Your ship condition is fully restored. Ready to explore again!")
-                # Refresh dashboard to show updated stats after ship purchase
                 display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
                 return True
             else:
@@ -155,7 +177,7 @@ def use_flight_pod():
     return False
 
 def game_loop():
-    global active_quest, turn_count, milestones_reached
+    global active_quest, turn_count, milestones_reached, at_repair_location
     while True:
         turn_count += 1
         if player_stats['health'] <= 0:
@@ -220,7 +242,7 @@ def game_loop():
         elif event_chance < config.RANDOM_EVENT_CHANCE + 25:  # Moderately increased chance for random events
             random_event(player_stats)
         else:
-            standard_navigation(player_stats)
+            at_repair_location = standard_navigation(player_stats)  # Update repair location status based on navigation
 
         # Milestone feedback every 5 turns
         if turn_count % 5 == 0:
@@ -240,19 +262,27 @@ def game_loop():
             else:
                 display_event("You decide to conserve food supplies.")
 
-        # Option to upgrade ship or buy flight pod if wealth is sufficient and conditions are met
-        if player_stats['wealth'] >= 300:
+        # Option to upgrade ship, repair ship (if at location), or buy flight pod if wealth is sufficient and conditions are met
+        if player_stats['wealth'] >= 100:
             display_event("You have enough wealth to spend. What would you like to do?")
-            choices = ["Upgrade ship (300 wealth, +30 ship condition)"]
+            choices = ["Upgrade ship (300 wealth, +20 max ship condition)"]
+            if at_repair_location:
+                choices.append("Repair ship (100 wealth, restores to max condition)")
             if not player_stats['has_flight_pod']:
                 choices.append("Buy flight pod (500 wealth)")
             choices.append("Do nothing")
             display_choices(choices)
             choice = input()
-            if choice == '1':
+            if choice == '1' and player_stats['wealth'] >= 300:
                 upgrade_ship()
                 continue  # Skip further dashboard display since upgrade_ship already does it
-            elif choice == '2' and not player_stats['has_flight_pod'] and player_stats['wealth'] >= 500:
+            elif choice == '2' and at_repair_location and player_stats['wealth'] >= 100:
+                repair_ship()
+                continue  # Skip further dashboard display since repair_ship already does it
+            elif choice == '2' and not at_repair_location and not player_stats['has_flight_pod'] and player_stats['wealth'] >= 500:
+                buy_flight_pod()
+                continue  # Skip further dashboard display since buy_flight_pod already does it
+            elif choice == '3' and not player_stats['has_flight_pod'] and player_stats['wealth'] >= 500:
                 buy_flight_pod()
                 continue  # Skip further dashboard display since buy_flight_pod already does it
             else:
@@ -264,11 +294,13 @@ def game_loop():
             "health": player_stats['health'],
             "wealth": player_stats['wealth'],
             "ship_condition": player_stats['ship_condition'],
+            "max_ship_condition": player_stats['max_ship_condition'],
             "fuel": player_stats['fuel'],
             "food": player_stats['food'],
             "has_flight_pod": player_stats['has_flight_pod'],
             "active_quest": active_quest,
-            "turn_count": turn_count
+            "turn_count": turn_count,
+            "at_repair_location": at_repair_location
         })
 
 def start_new_game_prompt():
