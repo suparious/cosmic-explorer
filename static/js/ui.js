@@ -187,10 +187,24 @@ class UIManager {
             const podIndicator = document.getElementById('pod-owned-indicator');
             if (podIndicator) {
                 podIndicator.style.display = 'flex';
-                // Update pod HP display
+                // Update pod HP display with real values
                 const podHpSpan = podIndicator.querySelector('.pod-hp');
                 if (podHpSpan) {
-                    podHpSpan.textContent = `(${stats.pod_hp}/${stats.pod_max_hp} HP)`;
+                    podHpSpan.textContent = `(${stats.pod_hp || 30}/${stats.pod_max_hp || 30} HP)`;
+                }
+                
+                // Show augmentations count if any
+                const augCount = stats.pod_augmentations ? stats.pod_augmentations.length : 0;
+                if (augCount > 0) {
+                    const augSpan = podIndicator.querySelector('.aug-count');
+                    if (!augSpan) {
+                        const newAugSpan = document.createElement('span');
+                        newAugSpan.className = 'aug-count';
+                        newAugSpan.style.cssText = 'font-size: 0.7rem; color: #FFD700; margin-left: 0.5rem;';
+                        podIndicator.appendChild(newAugSpan);
+                    }
+                    const augSpan2 = podIndicator.querySelector('.aug-count');
+                    if (augSpan2) augSpan2.textContent = `[${augCount} mods]`;
                 }
             }
         } else {
@@ -512,6 +526,136 @@ class UIManager {
         if (buyShipBtn) {
             buyShipBtn.style.display = 'none';
         }
+    }
+    
+    showPodModsButton() {
+        let podModsBtn = document.getElementById('pod-mods-btn');
+        if (!podModsBtn) {
+            // Create button if it doesn't exist
+            podModsBtn = document.createElement('button');
+            podModsBtn.id = 'pod-mods-btn';
+            podModsBtn.className = 'action-btn available';
+            podModsBtn.innerHTML = '<span class="btn-icon">🔧</span><span>Pod Mods</span>';
+            podModsBtn.onclick = () => {
+                this.showPodModsModal();
+            };
+            
+            const actionPanel = document.getElementById('action-panel');
+            if (actionPanel) {
+                actionPanel.appendChild(podModsBtn);
+            }
+        }
+        podModsBtn.style.display = 'flex';
+    }
+    
+    hidePodModsButton() {
+        const podModsBtn = document.getElementById('pod-mods-btn');
+        if (podModsBtn) {
+            podModsBtn.style.display = 'none';
+        }
+    }
+    
+    showPodModsModal() {
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('pod-mods-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'pod-mods-modal';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content pod-mods-content">
+                    <h3>🔧 Pod Augmentations</h3>
+                    <p class="modal-subtitle">Enhance your pod with powerful upgrades. Warning: All augmentations are lost if pod is used!</p>
+                    <div id="augmentations-list" class="augmentations-list"></div>
+                    <button class="modal-close-btn" onclick="window.uiManager.hidePodModsModal()">Close</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        // Populate augmentations
+        this.updateAugmentationsList();
+        
+        // Show modal
+        modal.style.display = 'flex';
+        modal.style.animation = 'fade-in 0.3s ease-out';
+    }
+    
+    hidePodModsModal() {
+        const modal = document.getElementById('pod-mods-modal');
+        if (modal) {
+            modal.style.animation = 'fade-out 0.3s ease-out';
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+    }
+    
+    updateAugmentationsList() {
+        const listEl = document.getElementById('augmentations-list');
+        if (!listEl || !window.gameEngine || !window.gameEngine.gameState) return;
+        
+        const gameState = window.gameEngine.gameState;
+        const stats = gameState.player_stats;
+        const augmentations = [
+            {
+                id: 'shield_boost',
+                icon: '🛡️',
+                name: 'Shield Boost Matrix',
+                description: 'Increases maximum ship HP by 20',
+                cost: 300
+            },
+            {
+                id: 'scanner_array',
+                icon: '📡',
+                name: 'Advanced Scanner Array',
+                description: 'Doubles rewards from positive scan events',
+                cost: 400
+            },
+            {
+                id: 'cargo_module',
+                icon: '📦',
+                name: 'Emergency Cargo Module',
+                description: 'Preserves 50% of wealth when pod is used',
+                cost: 500
+            },
+            {
+                id: 'emergency_thrusters',
+                icon: '🚀',
+                name: 'Emergency Thrusters',
+                description: 'Reduces fuel consumption by 20%',
+                cost: 250
+            }
+        ];
+        
+        listEl.innerHTML = '';
+        
+        augmentations.forEach(aug => {
+            const augEl = document.createElement('div');
+            augEl.className = 'augmentation-item';
+            
+            const isOwned = stats.pod_augmentations && stats.pod_augmentations.includes(aug.id);
+            const canAfford = stats.wealth >= aug.cost;
+            
+            augEl.innerHTML = `
+                <div class="aug-icon">${aug.icon}</div>
+                <div class="aug-info">
+                    <div class="aug-name">${aug.name}</div>
+                    <div class="aug-description">${aug.description}</div>
+                </div>
+                <div class="aug-action">
+                    ${isOwned ? 
+                        '<span class="aug-owned">Installed</span>' : 
+                        `<button class="aug-buy-btn ${canAfford ? '' : 'disabled'}" 
+                            ${canAfford ? `onclick="window.gameEngine.buyAugmentation('${aug.id}')"` : 'disabled'}>
+                            ${aug.cost} 💰
+                        </button>`
+                    }
+                </div>
+            `;
+            
+            listEl.appendChild(augEl);
+        });
     }
     
     showPodModsButton() {

@@ -361,6 +361,7 @@ def process_action(session, action, choice=None, data=None):
             session.player_stats['wealth'] -= 500
             session.player_stats['has_flight_pod'] = True
             session.player_stats['pod_hp'] = session.player_stats['pod_max_hp']
+            session.player_stats['pod_augmentations'] = []  # Initialize empty augmentations
             result['event'] = "Emergency escape pod purchased! This life-saving device will activate if your ship is destroyed."
             result['event_type'] = "purchase"
         else:
