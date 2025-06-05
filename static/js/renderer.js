@@ -237,33 +237,47 @@ class Renderer {
         
         // Pod attached to ship
         if (this.ship.hasPod) {
-            // Pod attachment point
+            // Pod attachment point - make it more visible
             this.ctx.save();
-            this.ctx.translate(-25, 0);
+            this.ctx.translate(-28, 0);
             
-            // Pod glow effect
-            const podGlow = this.ctx.createRadialGradient(0, 0, 8, 0, 0, 15);
-            podGlow.addColorStop(0, 'rgba(255, 200, 0, 0.6)');
+            // Pulsing effect
+            const pulseTime = Date.now() * 0.001;
+            const pulseScale = 1 + Math.sin(pulseTime * 3) * 0.1;
+            this.ctx.scale(pulseScale, pulseScale);
+            
+            // Larger pod glow effect
+            const podGlow = this.ctx.createRadialGradient(0, 0, 10, 0, 0, 20);
+            podGlow.addColorStop(0, 'rgba(255, 200, 0, 0.8)');
+            podGlow.addColorStop(0.5, 'rgba(255, 150, 0, 0.4)');
             podGlow.addColorStop(1, 'rgba(255, 200, 0, 0)');
             this.ctx.fillStyle = podGlow;
             this.ctx.beginPath();
-            this.ctx.arc(0, 0, 15, 0, Math.PI * 2);
+            this.ctx.arc(0, 0, 20, 0, Math.PI * 2);
             this.ctx.fill();
             
-            // Pod body
+            // Pod body - larger and more prominent
             this.ctx.fillStyle = '#FFA500';
             this.ctx.strokeStyle = '#FFD700';
-            this.ctx.lineWidth = 2;
+            this.ctx.lineWidth = 3;
             this.ctx.beginPath();
-            this.ctx.arc(0, 0, 8, 0, Math.PI * 2);
+            this.ctx.arc(0, 0, 10, 0, Math.PI * 2);
             this.ctx.fill();
             this.ctx.stroke();
             
             // Pod window
-            this.ctx.fillStyle = 'rgba(200, 200, 255, 0.8)';
+            this.ctx.fillStyle = 'rgba(200, 200, 255, 0.9)';
             this.ctx.beginPath();
-            this.ctx.arc(0, 0, 3, 0, Math.PI * 2);
+            this.ctx.arc(0, 0, 4, 0, Math.PI * 2);
             this.ctx.fill();
+            
+            // Connection line to ship
+            this.ctx.strokeStyle = 'rgba(255, 200, 0, 0.5)';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(10, 0);
+            this.ctx.lineTo(28, 0);
+            this.ctx.stroke();
             
             this.ctx.restore();
         }

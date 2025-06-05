@@ -186,7 +186,17 @@ class UIManager {
         if (stats.has_flight_pod && !stats.in_pod_mode) {
             const podIndicator = document.getElementById('pod-owned-indicator');
             if (podIndicator) {
-                podIndicator.style.display = 'inline-block';
+                podIndicator.style.display = 'flex';
+                // Update pod HP display
+                const podHpSpan = podIndicator.querySelector('.pod-hp');
+                if (podHpSpan) {
+                    podHpSpan.textContent = `(${stats.pod_hp}/${stats.pod_max_hp} HP)`;
+                }
+            }
+        } else {
+            const podIndicator = document.getElementById('pod-owned-indicator');
+            if (podIndicator) {
+                podIndicator.style.display = 'none';
             }
         }
         
