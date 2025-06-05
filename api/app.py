@@ -5,7 +5,7 @@ Provides REST endpoints and WebSocket support for the graphical frontend
 Enhanced with inventory system and ship customization
 """
 
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
 import json
@@ -533,6 +533,12 @@ class GameSession:
 def index():
     """Serve the main game page"""
     return render_template('index.html')
+
+@app.route('/favicon.ico')
+def favicon():
+    """Serve the favicon"""
+    return send_from_directory(os.path.join(app.root_path, '..', 'static'),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 @app.route('/api/game/new', methods=['POST'])
 def new_game():

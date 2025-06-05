@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Favicon Generator for Cosmic Explorer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0a0a0f;
+            color: #00ffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 50px;
+        }
+        canvas {
+            border: 2px solid #00ffff;
+            margin: 20px;
+            image-rendering: pixelated;
+        }
+        button {
+            padding: 10px 20px;
+            background: #00ffff;
+            color: #0a0a0f;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 10px;
+        }
+        button:hover {
+            background: #ff00ff;
+        }
+        .preview {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin: 20px 0;
+        }
+        .preview-item {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cosmic Explorer Favicon Generator</h1>
+    
+    <div class="preview">
+        <div class="preview-item">
+            <h3>16x16</h3>
+            <canvas id="canvas16" width="16" height="16"></canvas>
+        </div>
+        <div class="preview-item">
+            <h3>32x32</h3>
+            <canvas id="canvas32" width="32" height="32"></canvas>
+        </div>
+        <div class="preview-item">
+            <h3>64x64</h3>
+            <canvas id="canvas64" width="64" height="64"></canvas>
+        </div>
+    </div>
+    
+    <button onclick="downloadFavicon()">Download favicon.ico</button>
+    <button onclick="copyToStatic()">Copy Instructions</button>
+    
+    <div id="instructions" style="display: none; margin-top: 20px; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+        <p>To use the favicon:</p>
+        <ol>
+            <li>Click "Download favicon.ico"</li>
+            <li>Move the downloaded file to: <code>/home/shaun/repos/cosmic-explorer/static/</code></li>
+            <li>The favicon will automatically be served by Flask</li>
+        </ol>
+    </div>
+
+    <script>
+        // Function to draw the cosmic explorer icon
+        function drawIcon(ctx, size) {
+            const scale = size / 32;
+            
+            // Clear canvas
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(0, 0, size, size);
+            
+            // Draw border circle
+            ctx.strokeStyle = '#00ffff';
+            ctx.lineWidth = 1 * scale;
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, (size/2 - 1), 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Draw stars (only for larger sizes)
+            if (size > 16) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.beginPath();
+                ctx.arc(8 * scale, 8 * scale, 0.5 * scale, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(24 * scale, 6 * scale, 0.5 * scale, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw spaceship
+            ctx.fillStyle = '#00ffff';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 0.5 * scale;
+            ctx.beginPath();
+            ctx.moveTo(16 * scale, 6 * scale);
+            ctx.lineTo(12 * scale, 20 * scale);
+            ctx.lineTo(16 * scale, 18 * scale);
+            ctx.lineTo(20 * scale, 20 * scale);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Ship window
+            ctx.fillStyle = 'rgba(255, 0, 255, 0.8)';
+            ctx.beginPath();
+            ctx.arc(16 * scale, 14 * scale, 2 * scale, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Engine thrust
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.8)';
+            ctx.beginPath();
+            ctx.moveTo(14 * scale, 20 * scale);
+            ctx.lineTo(16 * scale, 26 * scale);
+            ctx.lineTo(18 * scale, 20 * scale);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Small planet (only for 32x32 and larger)
+            if (size >= 32) {
+                ctx.fillStyle = 'rgba(65, 105, 225, 0.7)';
+                ctx.beginPath();
+                ctx.arc(25 * scale, 25 * scale, 4 * scale, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // Draw icons on all canvases
+        const sizes = [16, 32, 64];
+        sizes.forEach(size => {
+            const canvas = document.getElementById(`canvas${size}`);
+            const ctx = canvas.getContext('2d');
+            drawIcon(ctx, size);
+        });
+        
+        // Function to convert canvas to ICO format
+        function canvasToIco(canvasList) {
+            // This creates a simple ICO file with multiple sizes
+            const icoData = [];
+            
+            // ICO header
+            icoData.push(0x00, 0x00); // Reserved
+            icoData.push(0x01, 0x00); // Type (1 = ICO)
+            icoData.push(canvasList.length, 0x00); // Number of images
+            
+            let offset = 6 + (16 * canvasList.length); // Header + directory entries
+            const imageData = [];
+            
+            // Directory entries
+            canvasList.forEach(canvas => {
+                const size = canvas.width;
+                const imageDataUrl = canvas.toDataURL('image/png');
+                const base64 = imageDataUrl.split(',')[1];
+                const binary = atob(base64);
+                const bytes = new Uint8Array(binary.length);
+                
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+                
+                imageData.push(bytes);
+                
+                // Directory entry
+                icoData.push(size === 256 ? 0 : size); // Width
+                icoData.push(size === 256 ? 0 : size); // Height
+                icoData.push(0x00); // Color palette
+                icoData.push(0x00); // Reserved
+                icoData.push(0x01, 0x00); // Color planes
+                icoData.push(0x20, 0x00); // Bits per pixel (32)
+                
+                // Size of image data (4 bytes, little-endian)
+                const sizeBytes = bytes.length;
+                icoData.push(sizeBytes & 0xFF);
+                icoData.push((sizeBytes >> 8) & 0xFF);
+                icoData.push((sizeBytes >> 16) & 0xFF);
+                icoData.push((sizeBytes >> 24) & 0xFF);
+                
+                // Offset to image data (4 bytes, little-endian)
+                icoData.push(offset & 0xFF);
+                icoData.push((offset >> 8) & 0xFF);
+                icoData.push((offset >> 16) & 0xFF);
+                icoData.push((offset >> 24) & 0xFF);
+                
+                offset += sizeBytes;
+            });
+            
+            // Add image data
+            imageData.forEach(bytes => {
+                for (let i = 0; i < bytes.length; i++) {
+                    icoData.push(bytes[i]);
+                }
+            });
+            
+            return new Uint8Array(icoData);
+        }
+        
+        function downloadFavicon() {
+            // Get all canvases
+            const canvases = [
+                document.getElementById('canvas16'),
+                document.getElementById('canvas32')
+            ];
+            
+            // For a simple favicon, we'll just use the 32x32 version
+            const canvas = document.getElementById('canvas32');
+            
+            // Convert to PNG and download
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'favicon.ico';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 'image/png');
+        }
+        
+        function copyToStatic() {
+            document.getElementById('instructions').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
