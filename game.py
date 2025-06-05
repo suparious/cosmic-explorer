@@ -39,11 +39,37 @@ def save_game(state):
         json.dump(state, f)
     print("Progress saved automatically.")
 
+def reset_game():
+    global player_stats, active_quest, turn_count
+    player_stats = {
+        "health": config.STARTING_HEALTH,
+        "wealth": config.STARTING_WEALTH,
+        "ship_condition": config.STARTING_SHIP_CONDITION,
+        "fuel": config.STARTING_FUEL
+    }
+    active_quest = None
+    turn_count = 0
+    new_state = {
+        "health": player_stats['health'],
+        "wealth": player_stats['wealth'],
+        "ship_condition": player_stats['ship_condition'],
+        "fuel": player_stats['fuel'],
+        "active_quest": active_quest,
+        "turn_count": turn_count
+    }
+    save_game(new_state)
+    print("Game reset. Starting a new adventure...")
+
 def display_stats():
-    print(f"\nPlayer Stats - Health: {player_stats['health']}, Wealth: {player_stats['wealth']}, Ship Condition: {player_stats['ship_condition']}, Fuel: {player_stats['fuel']}")
+    print("\033[1;36m\n=== Player Stats ===\033[0m")
+    print(f"\033[1;32mHealth: {player_stats['health']}\033[0m")
+    print(f"\033[1;33mWealth: {player_stats['wealth']}\033[0m")
+    print(f"\033[1;34mShip Condition: {player_stats['ship_condition']}\033[0m")
+    print(f"\033[1;31mFuel: {player_stats['fuel']}\033[0m")
     if active_quest:
-        print(f"Active Quest: {active_quest['name']} - {active_quest['status']}")
-    print(f"Turn: {turn_count}/{config.MAX_TURNS}")
+        print(f"\033[1;35mActive Quest: {active_quest['name']} - {active_quest['status']}\033[0m")
+    print(f"\033[1;36mTurn: {turn_count}/{config.MAX_TURNS}\033[0m")
+    print("\033[1;36m====================\033[0m")
 
 def start_game():
     global player_stats, active_quest, turn_count
@@ -69,19 +95,44 @@ def game_loop():
         turn_count += 1
         if player_stats['health'] <= 0:
             print("Game Over: Your health has depleted. Your journey ends here.")
-            break
+            if start_new_game_prompt():
+                reset_game()
+                display_stats()
+                continue
+            else:
+                break
         if player_stats['ship_condition'] <= 0:
             print("Game Over: Your ship is destroyed. You're stranded in space.")
-            break
+            if start_new_game_prompt():
+                reset_game()
+                display_stats()
+                continue
+            else:
+                break
         if player_stats['fuel'] <= config.MINIMUM_FUEL_THRESHOLD:
             print("Game Over: You've run out of fuel. You're stranded in space.")
-            break
+            if start_new_game_prompt():
+                reset_game()
+                display_stats()
+                continue
+            else:
+                break
         if player_stats['wealth'] >= config.VICTORY_WEALTH_THRESHOLD:
             print(f"Victory: You've amassed great wealth and can retire as a legendary explorer of {config.GAME_NAME}!")
-            break
+            if start_new_game_prompt():
+                reset_game()
+                display_stats()
+                continue
+            else:
+                break
         if turn_count >= config.MAX_TURNS:
             print(f"Game Over: You've reached the maximum number of turns ({config.MAX_TURNS}). Your journey ends here.")
-            break
+            if start_new_game_prompt():
+                reset_game()
+                display_stats()
+                continue
+            else:
+                break
 
         # Adjusted probabilities to increase event frequency for more engagement
         event_chance = random.random() * 100
@@ -104,6 +155,13 @@ def game_loop():
             "active_quest": active_quest,
             "turn_count": turn_count
         })
+
+def start_new_game_prompt():
+    print("\nWould you like to start a new game?")
+    print("1. Yes, start a new adventure.")
+    print("2. No, exit the game.")
+    choice = input("Enter your choice (1 or 2): ")
+    return choice == '1'
 
 if __name__ == '__main__':
     start_game()
