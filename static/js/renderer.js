@@ -339,6 +339,39 @@ class Renderer {
                 });
             }
             
+            // Show augmentation indicators
+            if (this.ship.podAugmentations && this.ship.podAugmentations.length > 0) {
+                this.ctx.save();
+                this.ctx.translate(-10, -20);
+                
+                // Draw small icons for each augmentation
+                const augIcons = {
+                    'shield_boost': '🛡️',
+                    'scanner_array': '📡',
+                    'cargo_module': '📦', 
+                    'emergency_thrusters': '🚀'
+                };
+                
+                this.ship.podAugmentations.forEach((augId, index) => {
+                    if (augIcons[augId]) {
+                        const x = index * 12;
+                        
+                        // Small glow for augmentation
+                        this.ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+                        this.ctx.beginPath();
+                        this.ctx.arc(x, 0, 8, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        
+                        // Draw icon
+                        this.ctx.font = '10px sans-serif';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.fillText(augIcons[augId], x, 3);
+                    }
+                });
+                
+                this.ctx.restore();
+            }
+            
             this.ctx.restore();
         }
         

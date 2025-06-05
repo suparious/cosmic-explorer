@@ -482,6 +482,11 @@ class GameEngine {
             this.renderer.ship.podMaxHp = this.gameState.player_stats.pod_max_hp;
             this.renderer.ship.podAnimationState = this.gameState.player_stats.pod_animation_state;
             this.renderer.ship.podAugmentations = this.gameState.player_stats.pod_augmentations || [];
+            
+            // Update augmentation info for display
+            if (this.gameState.pod_augmentations_info) {
+                this.renderer.ship.podAugmentationsInfo = this.gameState.pod_augmentations_info;
+            }
         }
         
         // Render
