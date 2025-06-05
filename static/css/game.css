@@ -770,6 +770,106 @@ body {
     border-color: var(--primary-color);
 }
 
+/* Pod Mods Modal */
+.pod-mods-content {
+    max-width: 800px;
+    width: 90%;
+}
+
+.modal-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.augmentations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.augmentation-card {
+    background: var(--glass-bg);
+    border: 2px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.augmentation-card:hover:not(.disabled) {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(0, 255, 255, 0.3);
+}
+
+.augmentation-card.owned {
+    border-color: var(--success-color);
+    background: rgba(51, 255, 51, 0.1);
+}
+
+.augmentation-card.disabled {
+    opacity: 0.5;
+}
+
+.aug-icon {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+}
+
+.aug-name {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.aug-description {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    line-height: 1.4;
+}
+
+.aug-cost {
+    font-weight: 700;
+    color: var(--accent-color);
+    margin-bottom: 1rem;
+}
+
+.aug-buy-btn {
+    padding: 0.5rem 1.5rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Space Mono', monospace;
+}
+
+.aug-buy-btn:hover:not(:disabled) {
+    background: var(--primary-color);
+    color: var(--bg-dark);
+}
+
+.aug-buy-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#pod-mods-btn {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: var(--bg-dark);
+    font-weight: bold;
+}
+
+#pod-mods-btn:hover {
+    box-shadow: 0 5px 30px rgba(255, 200, 0, 0.5);
+    transform: translateY(-3px);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .game-title {

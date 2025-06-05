@@ -314,6 +314,31 @@ class Renderer {
             this.ctx.lineTo(28, 0);
             this.ctx.stroke();
             
+            // Draw augmentation indicators
+            if (this.ship.augmentations && this.ship.augmentations.length > 0) {
+                const augColors = {
+                    'shield_boost': '#00FF00',
+                    'scanner_array': '#00FFFF',
+                    'cargo_module': '#FF00FF',
+                    'emergency_thrusters': '#FF0000'
+                };
+                
+                this.ship.augmentations.forEach((aug, index) => {
+                    const angle = (index / this.ship.augmentations.length) * Math.PI * 2 - Math.PI / 2;
+                    const x = Math.cos(angle) * 18;
+                    const y = Math.sin(angle) * 18;
+                    
+                    // Augmentation dot with glow
+                    this.ctx.fillStyle = augColors[aug] || '#FFFFFF';
+                    this.ctx.shadowColor = augColors[aug] || '#FFFFFF';
+                    this.ctx.shadowBlur = 5;
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.shadowBlur = 0;
+                });
+            }
+            
             this.ctx.restore();
         }
         

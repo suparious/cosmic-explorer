@@ -191,7 +191,7 @@ def perform_action(session_id, action_type=None):
         action = data.get('action', action_type)
         choice = data.get('choice')
         
-        result = process_action(session, action, choice)
+        result = process_action(session, action, choice, data)
         
         # Emit updated game state via WebSocket
         socketio.emit('game_state', session.to_dict(), room=session_id)
@@ -209,7 +209,7 @@ def perform_action(session_id, action_type=None):
             "game_state": session.to_dict()
         })
 
-def process_action(session, action, choice=None):
+def process_action(session, action, choice=None, data=None):
     """Process game actions and return results"""
     import random
     
@@ -406,7 +406,7 @@ def process_action(session, action, choice=None):
             result['event_type'] = "error"
             
     elif action == "buy_augmentation":
-        aug_id = data.get('augmentation_id')
+        aug_id = data.get('augmentation_id') if data else None
         if not aug_id or aug_id not in POD_AUGMENTATIONS:
             result['event'] = "Invalid augmentation."
             result['event_type'] = "error"

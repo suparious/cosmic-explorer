@@ -251,11 +251,11 @@ class UIManager {
                 this.hideBuyPodButton();
             }
             
-            // Show augmentations button if at repair location with pod
+            // Show pod mods button if has pod and at repair location
             if (gameState.at_repair_location && stats.has_flight_pod && !stats.in_pod_mode) {
-                this.showAugmentationsButton();
+                this.showPodModsButton();
             } else {
-                this.hideAugmentationsButton();
+                this.hidePodModsButton();
             }
         }
         
@@ -511,6 +511,105 @@ class UIManager {
         const buyShipBtn = document.getElementById('buy-ship-btn');
         if (buyShipBtn) {
             buyShipBtn.style.display = 'none';
+        }
+    }
+    
+    showPodModsButton() {
+        let podModsBtn = document.getElementById('pod-mods-btn');
+        if (!podModsBtn) {
+            // Create button if it doesn't exist
+            podModsBtn = document.createElement('button');
+            podModsBtn.id = 'pod-mods-btn';
+            podModsBtn.className = 'action-btn available';
+            podModsBtn.innerHTML = '<span class="btn-icon">✨</span><span>Pod Mods</span>';
+            podModsBtn.onclick = () => {
+                this.showPodModsModal();
+            };
+            
+            const actionPanel = document.getElementById('action-panel');
+            if (actionPanel) {
+                actionPanel.appendChild(podModsBtn);
+            }
+        }
+        podModsBtn.style.display = 'flex';
+    }
+    
+    hidePodModsButton() {
+        const podModsBtn = document.getElementById('pod-mods-btn');
+        if (podModsBtn) {
+            podModsBtn.style.display = 'none';
+        }
+    }
+    
+    showPodModsModal() {
+        if (!window.gameEngine || !window.gameEngine.gameState) return;
+        
+        const gameState = window.gameEngine.gameState;
+        const playerStats = gameState.player_stats;
+        
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('pod-mods-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'pod-mods-modal';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content pod-mods-content">
+                    <h3>🛸 Pod Augmentations</h3>
+                    <p class="modal-subtitle">Enhance your ship with pod-based technology. All augmentations are lost if pod is used!</p>
+                    <div id="augmentations-list" class="augmentations-grid"></div>
+                    <button class="menu-btn" onclick="window.uiManager.hidePodModsModal()">Close</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        // Populate augmentations
+        const augList = document.getElementById('augmentations-list');
+        augList.innerHTML = '';
+        
+        const augmentations = [
+            { id: 'shield_boost', name: 'Shield Boost Matrix', icon: '🛡️', cost: 300, description: 'Increases maximum ship HP by 20' },
+            { id: 'scanner_array', name: 'Advanced Scanner Array', icon: '📡', cost: 400, description: 'Doubles rewards from positive scan events' },
+            { id: 'cargo_module', name: 'Emergency Cargo Module', icon: '📦', cost: 500, description: 'Preserves 50% of wealth when pod is used' },
+            { id: 'emergency_thrusters', name: 'Emergency Thrusters', icon: '🚀', cost: 250, description: 'Reduces fuel consumption by 20%' }
+        ];
+        
+        augmentations.forEach(aug => {
+            const isOwned = playerStats.pod_augmentations && playerStats.pod_augmentations.includes(aug.id);
+            const canAfford = playerStats.wealth >= aug.cost;
+            
+            const augCard = document.createElement('div');
+            augCard.className = 'augmentation-card';
+            if (isOwned) augCard.classList.add('owned');
+            if (!canAfford && !isOwned) augCard.classList.add('disabled');
+            
+            augCard.innerHTML = `
+                <div class="aug-icon">${aug.icon}</div>
+                <div class="aug-name">${aug.name}</div>
+                <div class="aug-description">${aug.description}</div>
+                <div class="aug-cost">${isOwned ? 'Installed' : `${aug.cost} credits`}</div>
+                ${!isOwned ? `<button class="aug-buy-btn" ${!canAfford ? 'disabled' : ''} onclick="window.uiManager.buyAugmentation('${aug.id}')">Purchase</button>` : ''}
+            `;
+            
+            augList.appendChild(augCard);
+        });
+        
+        modal.style.display = 'flex';
+    }
+    
+    hidePodModsModal() {
+        const modal = document.getElementById('pod-mods-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    buyAugmentation(augId) {
+        if (window.gameEngine) {
+            window.gameEngine.sendAction('buy_augmentation', { augmentation_id: augId });
+            // Modal will refresh when game state updates
+            setTimeout(() => this.showPodModsModal(), 500);
         }
     }
     
