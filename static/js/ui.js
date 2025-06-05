@@ -363,7 +363,9 @@ class UIManager {
             // Pod mode actions
             this.updatePodModeActions(gameState, stats);
         } else {
-            // Normal mode actions
+            // Normal mode actions - ALWAYS hide buy ship button when not in pod mode
+            this.hideBuyShipButton();
+            
             if (repairBtn) {
                 if (gameState.at_repair_location && stats.wealth >= 100 && !stats.in_pod_mode) {
                     repairBtn.disabled = false;
@@ -582,8 +584,11 @@ class UIManager {
             if (btn) btn.disabled = true;
         });
         
-        // Show buy ship button if at location
-        if (gameState.at_repair_location && stats.wealth >= 400) {
+        // Only show buy ship button if ALL conditions are met:
+        // 1. In pod mode (ship destroyed)
+        // 2. At repair location
+        // 3. Have enough wealth (400)
+        if (stats.in_pod_mode && gameState.at_repair_location && stats.wealth >= 400) {
             this.showBuyShipButton();
         } else {
             this.hideBuyShipButton();
