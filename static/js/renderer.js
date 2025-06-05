@@ -214,27 +214,14 @@ class Renderer {
             shipColor = GameConfig.colors.ship.damaged;
         }
         
-        // Draw ship shape
-        this.ctx.fillStyle = shipColor;
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-        this.ctx.lineWidth = 2;
+        // Ship type affects shape
+        const shipType = this.ship.shipType || 'scout';
+        this.drawShipByType(shipType, shipColor);
         
-        // Simple triangle ship
-        this.ctx.beginPath();
-        this.ctx.moveTo(20, 0);
-        this.ctx.lineTo(-15, -12);
-        this.ctx.lineTo(-10, 0);
-        this.ctx.lineTo(-15, 12);
-        this.ctx.closePath();
-        this.ctx.fill();
-        this.ctx.stroke();
-        
-        // Engine glow
-        const engineGlow = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
-        this.ctx.fillStyle = `rgba(0, 255, 255, ${engineGlow})`;
-        this.ctx.beginPath();
-        this.ctx.arc(-10, 0, 5, 0, Math.PI * 2);
-        this.ctx.fill();
+        // Draw ship mods visual indicators
+        if (this.ship.shipMods) {
+            this.renderShipModIndicators();
+        }
         
         // Pod attached to ship
         if (this.ship.hasPod) {
@@ -717,6 +704,166 @@ class Renderer {
             rotation: 0,
             rotationSpeed: (Math.random() - 0.5) * 0.02
         });
+    }
+    
+    drawShipByType(shipType, shipColor) {
+        this.ctx.fillStyle = shipColor;
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        this.ctx.lineWidth = 2;
+        
+        switch(shipType) {
+            case 'scout':
+                // Small, sleek triangle
+                this.ctx.beginPath();
+                this.ctx.moveTo(18, 0);
+                this.ctx.lineTo(-12, -10);
+                this.ctx.lineTo(-8, 0);
+                this.ctx.lineTo(-12, 10);
+                this.ctx.closePath();
+                break;
+                
+            case 'trader':
+                // Bulky cargo ship
+                this.ctx.beginPath();
+                this.ctx.moveTo(15, 0);
+                this.ctx.lineTo(10, -15);
+                this.ctx.lineTo(-15, -15);
+                this.ctx.lineTo(-20, -8);
+                this.ctx.lineTo(-20, 8);
+                this.ctx.lineTo(-15, 15);
+                this.ctx.lineTo(10, 15);
+                this.ctx.closePath();
+                break;
+                
+            case 'combat':
+                // Angular fighter
+                this.ctx.beginPath();
+                this.ctx.moveTo(25, 0);
+                this.ctx.lineTo(15, -8);
+                this.ctx.lineTo(0, -12);
+                this.ctx.lineTo(-10, -8);
+                this.ctx.lineTo(-15, 0);
+                this.ctx.lineTo(-10, 8);
+                this.ctx.lineTo(0, 12);
+                this.ctx.lineTo(15, 8);
+                this.ctx.closePath();
+                break;
+                
+            case 'explorer':
+                // Advanced design
+                this.ctx.beginPath();
+                this.ctx.moveTo(22, 0);
+                this.ctx.lineTo(12, -10);
+                this.ctx.lineTo(0, -15);
+                this.ctx.lineTo(-10, -10);
+                this.ctx.lineTo(-12, 0);
+                this.ctx.lineTo(-10, 10);
+                this.ctx.lineTo(0, 15);
+                this.ctx.lineTo(12, 10);
+                this.ctx.closePath();
+                // Add secondary wings
+                this.ctx.moveTo(5, -8);
+                this.ctx.lineTo(-5, -18);
+                this.ctx.lineTo(-8, -8);
+                this.ctx.moveTo(5, 8);
+                this.ctx.lineTo(-5, 18);
+                this.ctx.lineTo(-8, 8);
+                break;
+                
+            default:
+                // Default triangle
+                this.ctx.beginPath();
+                this.ctx.moveTo(20, 0);
+                this.ctx.lineTo(-15, -12);
+                this.ctx.lineTo(-10, 0);
+                this.ctx.lineTo(-15, 12);
+                this.ctx.closePath();
+        }
+        
+        this.ctx.fill();
+        this.ctx.stroke();
+        
+        // Engine glow (varies by ship type)
+        const engineGlow = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+        const enginePositions = {
+            'scout': [{x: -10, y: 0, size: 5}],
+            'trader': [{x: -18, y: -8, size: 4}, {x: -18, y: 8, size: 4}],
+            'combat': [{x: -12, y: -4, size: 3}, {x: -12, y: 4, size: 3}, {x: -12, y: 0, size: 3}],
+            'explorer': [{x: -10, y: 0, size: 6}, {x: -8, y: -8, size: 3}, {x: -8, y: 8, size: 3}]
+        };
+        
+        const engines = enginePositions[shipType] || enginePositions['scout'];
+        engines.forEach(engine => {
+            this.ctx.fillStyle = `rgba(0, 255, 255, ${engineGlow})`;
+            this.ctx.beginPath();
+            this.ctx.arc(engine.x, engine.y, engine.size, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+    }
+    
+    renderShipModIndicators() {
+        if (!this.ship.shipMods) return;
+        
+        const modIndicators = {
+            // High slot mods - displayed at front
+            'laser_cannon': { x: 15, y: -5, color: '#FF0000', size: 3 },
+            'missile_launcher': { x: 15, y: 5, color: '#FFA500', size: 3 },
+            'mining_laser': { x: 12, y: 0, color: '#FFFF00', size: 3 },
+            'salvager': { x: 18, y: 0, color: '#00FF00', size: 3 },
+            
+            // Mid slot mods - displayed on sides
+            'shield_booster': { x: 0, y: -15, color: '#00FFFF', size: 4 },
+            'scanner_upgrade': { x: 0, y: 15, color: '#FF00FF', size: 4 },
+            'targeting_computer': { x: 5, y: -12, color: '#FF69B4', size: 3 },
+            'afterburner': { x: -15, y: 0, color: '#FF4500', size: 5 },
+            
+            // Low slot mods - displayed at rear
+            'armor_plates': { x: -10, y: -8, color: '#8B4513', size: 3 },
+            'cargo_expander': { x: -10, y: 8, color: '#4B0082', size: 3 },
+            'fuel_optimizer': { x: -15, y: -5, color: '#32CD32', size: 3 },
+            'repair_drones': { x: -15, y: 5, color: '#FFD700', size: 3 }
+        };
+        
+        // Draw mod indicators
+        Object.values(this.ship.shipMods).forEach(modList => {
+            modList.forEach(modId => {
+                const indicator = modIndicators[modId];
+                if (indicator) {
+                    // Glow effect
+                    const glowSize = indicator.size + Math.sin(Date.now() * 0.005) * 1;
+                    this.ctx.fillStyle = indicator.color + '40'; // 40 = 25% opacity
+                    this.ctx.beginPath();
+                    this.ctx.arc(indicator.x, indicator.y, glowSize + 2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Main indicator
+                    this.ctx.fillStyle = indicator.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(indicator.x, indicator.y, indicator.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Inner bright spot
+                    this.ctx.fillStyle = '#FFFFFF';
+                    this.ctx.beginPath();
+                    this.ctx.arc(indicator.x, indicator.y, indicator.size * 0.3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            });
+        });
+        
+        // Rig modifications create an energy field around the ship
+        if (this.ship.shipMods.rig && this.ship.shipMods.rig.length > 0) {
+            const time = Date.now() * 0.001;
+            const rigAlpha = 0.1 + Math.sin(time * 2) * 0.05;
+            
+            this.ctx.strokeStyle = `rgba(255, 215, 0, ${rigAlpha})`;
+            this.ctx.lineWidth = 2;
+            this.ctx.setLineDash([5, 5]);
+            this.ctx.beginPath();
+            this.ctx.ellipse(0, 0, 35, 25, 0, 0, Math.PI * 2);
+            this.ctx.stroke();
+            this.ctx.setLineDash([]);
+        }
     }
 }
 

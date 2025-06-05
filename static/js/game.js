@@ -498,6 +498,10 @@ class GameEngine {
             this.renderer.ship.podAnimationState = this.gameState.player_stats.pod_animation_state;
             this.renderer.ship.podAugmentations = this.gameState.player_stats.pod_augmentations || [];
             
+            // Update ship type and mods
+            this.renderer.ship.shipType = this.gameState.player_stats.ship_type || 'scout';
+            this.renderer.ship.shipMods = this.gameState.player_stats.ship_mods || {};
+            
             // Update augmentation info for display
             if (this.gameState.pod_augmentations_info) {
                 this.renderer.ship.podAugmentationsInfo = this.gameState.pod_augmentations_info;
