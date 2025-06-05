@@ -114,6 +114,17 @@ class UIManager {
     animation: pulse 2s ease-in-out infinite;
 }
 
+.action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    border-color: var(--text-secondary);
+}
+
+.action-btn:disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
 /* Pod Augmentation Modal Styles */
 .pod-mods-content {
     max-width: 600px;
@@ -276,6 +287,8 @@ class UIManager {
             const podIndicator = document.getElementById('pod-owned-indicator');
             if (podIndicator) {
                 podIndicator.style.display = 'flex';
+                podIndicator.style.cursor = 'pointer';
+                
                 // Update pod HP display with real values
                 const podHpSpan = podIndicator.querySelector('.pod-hp');
                 if (podHpSpan) {
@@ -295,6 +308,20 @@ class UIManager {
                     const augSpan2 = podIndicator.querySelector('.aug-count');
                     if (augSpan2) augSpan2.textContent = `[${augCount} mods]`;
                 }
+                
+                // Add click handler for pod info
+                podIndicator.onclick = () => {
+                    const augNames = stats.pod_augmentations ? stats.pod_augmentations.map(id => {
+                        const augInfo = gameState.pod_augmentations_info || {};
+                        return augInfo[id] ? augInfo[id].icon + ' ' + augInfo[id].name : id;
+                    }).join(', ') : 'None';
+                    
+                    const message = augCount > 0 ? 
+                        `Pod Status: ${stats.pod_hp}/${stats.pod_max_hp} HP\nAugmentations: ${augNames}` : 
+                        `Pod Status: ${stats.pod_hp}/${stats.pod_max_hp} HP\nNo augmentations installed`;
+                    
+                    this.showNotification(message, 'info', 5000);
+                };
             }
         } else {
             const podIndicator = document.getElementById('pod-owned-indicator');
@@ -354,9 +381,9 @@ class UIManager {
                 this.hideBuyPodButton();
             }
             
-            // Show pod mods button if has pod and at location and didn't just buy pod
-            if (stats.has_flight_pod && gameState.at_repair_location && !stats.in_pod_mode && !stats.just_bought_pod) {
-                this.showPodModsButton();
+            // Show pod mods button if has pod and at location
+            if (stats.has_flight_pod && gameState.at_repair_location && !stats.in_pod_mode) {
+                this.showPodModsButton(stats.just_bought_pod);
             } else {
                 this.hidePodModsButton();
             }
@@ -617,23 +644,50 @@ class UIManager {
         }
     }
     
-    showPodModsButton() {
+    showPodModsButton(justBoughtPod = false) {
         let podModsBtn = document.getElementById('pod-mods-btn');
         if (!podModsBtn) {
             // Create button if it doesn't exist
             podModsBtn = document.createElement('button');
             podModsBtn.id = 'pod-mods-btn';
-            podModsBtn.className = 'action-btn available';
+            podModsBtn.className = 'action-btn';
+            podModsBtn.innerHTML = '<span class="btn-icon">✨</span><span>Pod Mods</span>';
+            // Add inline styles to ensure visibility
+            podModsBtn.style.cssText = 'background: linear-gradient(135deg, #FFD700, #FFA500); color: #0a0a0f; font-weight: bold;';
+            
+            const actionPanel = document.getElementById('action-panel');
+            if (actionPanel) {
+                // Insert before the last button (Star Map) to keep it more visible
+                const starMapBtn = actionPanel.querySelector('button:last-child');
+                if (starMapBtn) {
+                    actionPanel.insertBefore(podModsBtn, starMapBtn);
+                } else {
+                    actionPanel.appendChild(podModsBtn);
+                }
+                console.log('Pod Mods button added to action panel');
+            }
+        }
+        
+        // Update button state based on justBoughtPod
+        if (justBoughtPod) {
+            podModsBtn.disabled = true;
+            podModsBtn.classList.remove('available');
+            podModsBtn.title = 'Navigate at least once before installing augmentations';
+            // Update button text to be more helpful
+            podModsBtn.innerHTML = '<span class="btn-icon">✨</span><span>Pod Mods (Navigate First)</span>';
+            podModsBtn.onclick = () => {
+                this.showNotification('You must navigate at least once after buying a pod before installing augmentations!', 'info', 4000);
+            };
+        } else {
+            podModsBtn.disabled = false;
+            podModsBtn.classList.add('available');
+            podModsBtn.title = 'Install pod augmentations';
             podModsBtn.innerHTML = '<span class="btn-icon">✨</span><span>Pod Mods</span>';
             podModsBtn.onclick = () => {
                 this.showPodModsModal();
             };
-            
-            const actionPanel = document.getElementById('action-panel');
-            if (actionPanel) {
-                actionPanel.appendChild(podModsBtn);
-            }
         }
+        
         podModsBtn.style.display = 'flex';
     }
     
