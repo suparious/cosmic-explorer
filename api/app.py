@@ -19,8 +19,40 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import config
 import game
 
+# Pod augmentation definitions
+POD_AUGMENTATIONS = {
+    "shield_boost": {
+        "name": "Shield Boost Matrix",
+        "description": "Increases maximum ship HP by 20",
+        "cost": 300,
+        "effect": {"max_ship_condition": 20},
+        "icon": "🛡️"
+    },
+    "scanner_array": {
+        "name": "Advanced Scanner Array",
+        "description": "Doubles rewards from scan events",
+        "cost": 400,
+        "effect": {"scan_multiplier": 2},
+        "icon": "📡"
+    },
+    "cargo_module": {
+        "name": "Emergency Cargo Module",
+        "description": "Preserves 50% of wealth when pod is used",
+        "cost": 500,
+        "effect": {"wealth_preservation": 0.5},
+        "icon": "📦"
+    },
+    "emergency_thrusters": {
+        "name": "Emergency Thrusters",
+        "description": "Reduces fuel consumption by 20%",
+        "cost": 250,
+        "effect": {"fuel_efficiency": 0.8},
+        "icon": "🚀"
+    }
+}
+
 # Web-compatible navigation function
-def web_navigation(player_stats, choice=None):
+def web_navigation(player_stats, choice=None, augmentations=None):
     """Navigation function for web interface that doesn't use terminal input"""
     import random
     at_repair_location = False
@@ -29,13 +61,18 @@ def web_navigation(player_stats, choice=None):
     if choice is None:
         choice = random.choice(['planet', 'route'])
     
+    # Calculate fuel consumption with augmentation effects
+    fuel_consumption = config.FUEL_CONSUMPTION_RATE
+    if augmentations and 'emergency_thrusters' in augmentations:
+        fuel_consumption = int(fuel_consumption * 0.8)  # 20% reduction
+    
     if choice == 'planet':
         player_stats['ship_condition'] -= 5
-        player_stats['fuel'] -= config.FUEL_CONSUMPTION_RATE
+        player_stats['fuel'] -= fuel_consumption
         at_repair_location = True
         message = "You approach a planet and dock at an outpost. Repairs available!"
     else:
-        player_stats['fuel'] -= config.FUEL_CONSUMPTION_RATE
+        player_stats['fuel'] -= fuel_consumption
         message = "You proceed smoothly through space."
     
     return at_repair_location, message
@@ -56,11 +93,13 @@ class GameSession:
             "wealth": config.STARTING_WEALTH,
             "ship_condition": config.STARTING_SHIP_CONDITION,
             "max_ship_condition": config.STARTING_SHIP_CONDITION,
+            "base_max_ship_condition": config.STARTING_SHIP_CONDITION,  # Track base without augmentations
             "fuel": config.STARTING_FUEL,
             "food": config.STARTING_FOOD,
             "has_flight_pod": False,
             "pod_hp": 0,
             "pod_max_hp": 30,  # Maximum pod HP
+            "pod_augmentations": [],  # List of installed augmentations
             "in_pod_mode": False,  # True when ship destroyed, using pod
             "pod_animation_state": "idle"  # idle, ejecting, active, damaged
         }
@@ -72,9 +111,29 @@ class GameSession:
         self.current_event = None
         self.available_choices = []
         
+    def get_effective_stats(self):
+        """Calculate effective stats including pod augmentation bonuses"""
+        stats = self.player_stats.copy()
+        
+        # Apply augmentation effects
+        if self.player_stats['has_flight_pod'] and not self.player_stats['in_pod_mode']:
+            for aug_id in self.player_stats['pod_augmentations']:
+                if aug_id in POD_AUGMENTATIONS:
+                    effects = POD_AUGMENTATIONS[aug_id]['effect']
+                    
+                    # Shield boost
+                    if 'max_ship_condition' in effects:
+                        stats['max_ship_condition'] += effects['max_ship_condition']
+                        # Also boost current condition proportionally
+                        if stats['ship_condition'] == self.player_stats['max_ship_condition']:
+                            stats['ship_condition'] = stats['max_ship_condition']
+        
+        return stats
+    
     def to_dict(self):
+        effective_stats = self.get_effective_stats()
         return {
-            "player_stats": self.player_stats,
+            "player_stats": effective_stats,
             "active_quest": self.active_quest,
             "turn_count": self.turn_count,
             "at_repair_location": self.at_repair_location,
@@ -82,7 +141,8 @@ class GameSession:
             "victory": self.victory,
             "current_event": self.current_event,
             "available_choices": self.available_choices,
-            "max_turns": config.MAX_TURNS
+            "max_turns": config.MAX_TURNS,
+            "pod_augmentations_info": {aug_id: POD_AUGMENTATIONS[aug_id] for aug_id in self.player_stats.get('pod_augmentations', [])}
         }
 
 @app.route('/')
@@ -228,7 +288,11 @@ def process_action(session, action, choice=None):
             if session.at_repair_location:
                 result['choices'] = ["Buy new ship (400 wealth)", "Wait and conserve resources"]
         else:
-            session.at_repair_location, nav_message = web_navigation(session.player_stats)
+            # Pass augmentations for fuel efficiency
+            session.at_repair_location, nav_message = web_navigation(
+                session.player_stats, 
+                augmentations=session.player_stats.get('pod_augmentations', [])
+            )
             result['event'] = nav_message
             result['event_type'] = "navigation"
         
@@ -261,6 +325,12 @@ def process_action(session, action, choice=None):
             ("Stumble upon hidden fuel cache", "fuel", 15, "You uncover extra fuel reserves! Fuel increased.")
         ]
         event, stat, change, message = random.choice(events)
+        
+        # Apply scanner array bonus to positive wealth events
+        if stat == "wealth" and change > 0 and 'scanner_array' in session.player_stats.get('pod_augmentations', []):
+            change = int(change * 2)
+            message += " (Scanner Array bonus!)"
+        
         session.player_stats[stat] += change
         result['event'] = f"{event} - {message}"
         result['event_type'] = "random_event" if change < 0 else "success"
@@ -299,13 +369,23 @@ def process_action(session, action, choice=None):
             
     elif action == "buy_ship":
         if session.player_stats['in_pod_mode'] and session.at_repair_location and session.player_stats['wealth'] >= 400:
+            # Apply cargo module wealth preservation
+            preserved_wealth = 0
+            if 'cargo_module' in session.player_stats.get('pod_augmentations', []):
+                preserved_wealth = int(session.player_stats['wealth'] * 0.5)
+                result['event'] = f"New ship purchased! Cargo module preserved {preserved_wealth} wealth. You're back in action with a fully functional vessel."
+            else:
+                result['event'] = "New ship purchased! You're back in action with a fully functional vessel."
+            
             session.player_stats['wealth'] -= 400
-            session.player_stats['ship_condition'] = session.player_stats['max_ship_condition']
+            session.player_stats['wealth'] += preserved_wealth
+            session.player_stats['ship_condition'] = session.player_stats.get('base_max_ship_condition', session.player_stats['max_ship_condition'])
+            session.player_stats['max_ship_condition'] = session.player_stats.get('base_max_ship_condition', session.player_stats['max_ship_condition'])
             session.player_stats['in_pod_mode'] = False
             session.player_stats['has_flight_pod'] = False  # Pod is used up
             session.player_stats['pod_hp'] = 0
+            session.player_stats['pod_augmentations'] = []  # All augmentations lost
             session.player_stats['pod_animation_state'] = "idle"
-            result['event'] = "New ship purchased! You're back in action with a fully functional vessel."
             result['event_type'] = "purchase"
         else:
             result['event'] = "Cannot purchase ship. Must be in pod mode at a repair location with 400 wealth."
@@ -324,6 +404,34 @@ def process_action(session, action, choice=None):
         else:
             result['event'] = "Cannot send distress signal without being in pod mode."
             result['event_type'] = "error"
+            
+    elif action == "buy_augmentation":
+        aug_id = data.get('augmentation_id')
+        if not aug_id or aug_id not in POD_AUGMENTATIONS:
+            result['event'] = "Invalid augmentation."
+            result['event_type'] = "error"
+        elif not session.player_stats['has_flight_pod']:
+            result['event'] = "You need a pod to install augmentations."
+            result['event_type'] = "error"
+        elif session.player_stats['in_pod_mode']:
+            result['event'] = "Cannot install augmentations while in pod mode."
+            result['event_type'] = "error"
+        elif not session.at_repair_location:
+            result['event'] = "Must be at a repair location to install augmentations."
+            result['event_type'] = "error"
+        elif aug_id in session.player_stats.get('pod_augmentations', []):
+            result['event'] = "Augmentation already installed."
+            result['event_type'] = "error"
+        elif session.player_stats['wealth'] < POD_AUGMENTATIONS[aug_id]['cost']:
+            result['event'] = f"Insufficient wealth. Need {POD_AUGMENTATIONS[aug_id]['cost']}."
+            result['event_type'] = "error"
+        else:
+            # Purchase augmentation
+            session.player_stats['wealth'] -= POD_AUGMENTATIONS[aug_id]['cost']
+            session.player_stats['pod_augmentations'].append(aug_id)
+            aug_info = POD_AUGMENTATIONS[aug_id]
+            result['event'] = f"{aug_info['icon']} {aug_info['name']} installed! {aug_info['description']}"
+            result['event_type'] = "purchase"
             
     elif action == "consume_food":
         if session.player_stats['food'] >= 10:

@@ -54,7 +54,8 @@ class Renderer {
             inPodMode: false,
             podHp: 0,
             podMaxHp: 30,
-            podAnimationState: 'idle'
+            podAnimationState: 'idle',
+            podAugmentations: []
         };
     }
     
@@ -270,6 +271,40 @@ class Renderer {
             this.ctx.beginPath();
             this.ctx.arc(0, 0, 4, 0, Math.PI * 2);
             this.ctx.fill();
+            
+            // Show augmentation indicators
+            if (this.ship.podAugmentations && this.ship.podAugmentations.length > 0) {
+                this.ctx.save();
+                this.ctx.font = '10px Arial';
+                this.ctx.textAlign = 'center';
+                
+                // Position augmentation icons around the pod
+                this.ship.podAugmentations.forEach((aug, index) => {
+                    const angle = (index / 4) * Math.PI * 2 - Math.PI / 2;
+                    const x = Math.cos(angle) * 18;
+                    const y = Math.sin(angle) * 18;
+                    
+                    // Small glow for each augmentation
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, 6, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Augmentation color
+                    let augColor = '#FFD700';
+                    if (aug === 'shield_boost') augColor = '#00FF00';
+                    else if (aug === 'scanner_array') augColor = '#00FFFF';
+                    else if (aug === 'cargo_module') augColor = '#FF00FF';
+                    else if (aug === 'emergency_thrusters') augColor = '#FF0000';
+                    
+                    this.ctx.fillStyle = augColor;
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, 4, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+                
+                this.ctx.restore();
+            }
             
             // Connection line to ship
             this.ctx.strokeStyle = 'rgba(255, 200, 0, 0.5)';

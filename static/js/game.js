@@ -120,6 +120,15 @@ class GameEngine {
                 this.createPodEjectionEffect();
                 this.uiManager.showNotification('ESCAPE POD ACTIVATED!', 'warning');
                 break;
+            case 'purchase':
+                this.audioManager.playSound('success');
+                // Refresh augmentations modal if it's open
+                const modal = document.getElementById('choice-modal');
+                const modalTitle = document.getElementById('choice-title');
+                if (modal && modal.style.display !== 'none' && modalTitle && modalTitle.textContent === 'Pod Augmentations') {
+                    this.uiManager.showAugmentationsModal();
+                }
+                break;
         }
         
         // Show choices if available
@@ -194,6 +203,19 @@ class GameEngine {
     
     buyShip() {
         this.sendAction('buy_ship');
+    }
+    
+    buyAugmentation(augId) {
+        this.sendAction('buy_augmentation', { augmentation_id: augId });
+    }
+    
+    showAugmentations() {
+        // Show pod augmentations modal
+        if (this.gameState && this.gameState.at_repair_location && this.gameState.player_stats.has_flight_pod) {
+            this.uiManager.showAugmentationsModal();
+        } else {
+            this.uiManager.showNotification('Must be at repair location with pod to view augmentations', 'info');
+        }
     }
     
     sendDistressSignal() {
@@ -427,6 +449,7 @@ class GameEngine {
             this.renderer.ship.podHp = this.gameState.player_stats.pod_hp;
             this.renderer.ship.podMaxHp = this.gameState.player_stats.pod_max_hp;
             this.renderer.ship.podAnimationState = this.gameState.player_stats.pod_animation_state;
+            this.renderer.ship.podAugmentations = this.gameState.player_stats.pod_augmentations || [];
         }
         
         // Render

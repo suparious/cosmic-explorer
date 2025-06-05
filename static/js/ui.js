@@ -250,6 +250,13 @@ class UIManager {
             } else {
                 this.hideBuyPodButton();
             }
+            
+            // Show augmentations button if at repair location with pod
+            if (gameState.at_repair_location && stats.has_flight_pod && !stats.in_pod_mode) {
+                this.showAugmentationsButton();
+            } else {
+                this.hideAugmentationsButton();
+            }
         }
         
         // Flash warnings for critical stats
@@ -504,6 +511,90 @@ class UIManager {
         const buyShipBtn = document.getElementById('buy-ship-btn');
         if (buyShipBtn) {
             buyShipBtn.style.display = 'none';
+        }
+    }
+    
+    showAugmentationsButton() {
+        let augBtn = document.getElementById('augmentations-btn');
+        if (!augBtn) {
+            // Create button if it doesn't exist
+            augBtn = document.createElement('button');
+            augBtn.id = 'augmentations-btn';
+            augBtn.className = 'action-btn available';
+            augBtn.innerHTML = '<span class="btn-icon">⚙️</span><span>Pod Mods</span>';
+            augBtn.onclick = () => {
+                if (window.gameEngine) window.gameEngine.showAugmentations();
+            };
+            
+            const actionPanel = document.getElementById('action-panel');
+            if (actionPanel) {
+                actionPanel.appendChild(augBtn);
+            }
+        }
+        augBtn.style.display = 'flex';
+    }
+    
+    hideAugmentationsButton() {
+        const augBtn = document.getElementById('augmentations-btn');
+        if (augBtn) {
+            augBtn.style.display = 'none';
+        }
+    }
+    
+    showAugmentationsModal() {
+        if (!window.gameEngine || !window.gameEngine.gameState) return;
+        
+        const gameState = window.gameEngine.gameState;
+        const installedAugs = gameState.player_stats.pod_augmentations || [];
+        const wealth = gameState.player_stats.wealth;
+        
+        // Define available augmentations
+        const augmentations = [
+            { id: 'shield_boost', name: 'Shield Boost Matrix', desc: 'Increases max ship HP by 20', cost: 300, icon: '🛡️' },
+            { id: 'scanner_array', name: 'Advanced Scanner Array', desc: 'Doubles scan event rewards', cost: 400, icon: '📡' },
+            { id: 'cargo_module', name: 'Emergency Cargo Module', desc: 'Preserves 50% wealth when pod used', cost: 500, icon: '📦' },
+            { id: 'emergency_thrusters', name: 'Emergency Thrusters', desc: 'Reduces fuel consumption by 20%', cost: 250, icon: '🚀' }
+        ];
+        
+        let content = '<div class="augmentations-list">';
+        
+        augmentations.forEach(aug => {
+            const isInstalled = installedAugs.includes(aug.id);
+            const canAfford = wealth >= aug.cost;
+            
+            content += `
+                <div class="augmentation-item ${isInstalled ? 'installed' : ''} ${!canAfford && !isInstalled ? 'disabled' : ''}">
+                    <div class="aug-icon">${aug.icon}</div>
+                    <div class="aug-info">
+                        <div class="aug-name">${aug.name}</div>
+                        <div class="aug-desc">${aug.desc}</div>
+                    </div>
+                    <div class="aug-action">
+                        ${isInstalled ? 
+                            '<span class="aug-status">Installed</span>' : 
+                            `<button class="aug-buy-btn" ${canAfford ? `onclick="window.gameEngine.buyAugmentation('${aug.id}')"` : 'disabled'}>
+                                ${aug.cost} 💰
+                            </button>`
+                        }
+                    </div>
+                </div>
+            `;
+        });
+        
+        content += '</div>';
+        
+        // Add some info about augmentations
+        content += '<div class="aug-info-text">Pod augmentations enhance your ship while the pod is attached. All augmentations are lost when the pod is used!</div>';
+        
+        // Add close button
+        content += '<button class="close-aug-modal-btn" onclick="document.getElementById(\'choice-modal\').style.display = \'none\'">Close</button>';
+        
+        this.showChoiceModal('Pod Augmentations', [], () => {});
+        
+        // Replace the choice content with augmentations content
+        const choiceList = document.getElementById('choice-list');
+        if (choiceList) {
+            choiceList.innerHTML = content;
         }
     }
 }
