@@ -85,6 +85,26 @@ def start_game():
     display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
     game_loop()
 
+def upgrade_ship():
+    global player_stats
+    cost = 300
+    if player_stats['wealth'] >= cost:
+        player_stats['wealth'] -= cost
+        player_stats['ship_condition'] = min(player_stats['ship_condition'] + 30, 100)
+        display_event(f"Ship upgraded! Spent {cost} wealth. Ship condition improved by 30.")
+    else:
+        display_event("Insufficient wealth to upgrade ship. You need at least 300 wealth.")
+
+def buy_flight_pod():
+    global player_stats
+    cost = 500
+    if player_stats['wealth'] >= cost:
+        player_stats['wealth'] -= cost
+        display_event(f"Flight pod purchased for {cost} wealth! You can now travel to planets or stations to buy a new ship.")
+        # Additional logic for flight pod usage can be added later
+    else:
+        display_event("Insufficient wealth to buy a flight pod. You need at least 500 wealth.")
+
 def game_loop():
     global active_quest, turn_count, milestones_reached
     while True:
@@ -157,6 +177,18 @@ def game_loop():
                 display_event("You consume food supplies. Health increased by 20!")
             else:
                 display_event("You decide to conserve food supplies.")
+
+        # Option to upgrade ship or buy flight pod if wealth is sufficient
+        if player_stats['wealth'] >= 300:
+            display_event("You have enough wealth to upgrade your ship or buy a flight pod. What would you like to do?")
+            display_choices(["Upgrade ship (300 wealth, +30 ship condition)", "Buy flight pod (500 wealth)", "Do nothing"])
+            choice = input()
+            if choice == '1':
+                upgrade_ship()
+            elif choice == '2' and player_stats['wealth'] >= 500:
+                buy_flight_pod()
+            else:
+                display_event("You decide to do nothing with your wealth for now.")
 
         display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
         # Automatically save progress after each action
