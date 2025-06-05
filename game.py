@@ -6,8 +6,9 @@ import json
 import os
 from config import config  # Import game configuration
 from events import offer_quest, random_event  # Import event-related functions
-from navigation import standard_navigation  # Import navigation functions
+from navigation import standard_navigation, region_navigation  # Import navigation functions
 from ui import display_dashboard, display_event, display_choices  # Import UI functions
+from regions import generate_new_star_map, get_region_visual_config  # Import region system
 
 # Player stats initialized from config
 player_stats = {
@@ -26,6 +27,11 @@ turn_count = 0
 milestones_reached = 0
 at_repair_location = False  # Track if player is at a location where repairs are possible
 
+# Star map and region tracking
+star_map = None
+current_region_id = None
+current_node_id = None
+
 def load_game():
     try:
         with open(config.SAVE_FILE_PATH, "r") as f:
@@ -41,7 +47,10 @@ def load_game():
             "has_flight_pod": False,
             "active_quest": None,
             "turn_count": 0,
-            "at_repair_location": False
+            "at_repair_location": False,
+            "star_map": None,
+            "current_region_id": None,
+            "current_node_id": None
         }
 
 def save_game(state):
@@ -50,7 +59,7 @@ def save_game(state):
     print("Progress saved automatically.")
 
 def reset_game():
-    global player_stats, active_quest, turn_count, at_repair_location
+    global player_stats, active_quest, turn_count, at_repair_location, star_map, current_region_id, current_node_id
     player_stats = {
         "health": config.STARTING_HEALTH,
         "wealth": config.STARTING_WEALTH,
@@ -63,6 +72,12 @@ def reset_game():
     active_quest = None
     turn_count = 0
     at_repair_location = False
+    
+    # Generate new star map
+    star_map = generate_new_star_map()
+    current_region_id = star_map["current_region"]
+    current_node_id = star_map["current_node"]
+    
     new_state = {
         "health": player_stats['health'],
         "wealth": player_stats['wealth'],
@@ -73,13 +88,16 @@ def reset_game():
         "has_flight_pod": player_stats['has_flight_pod'],
         "active_quest": active_quest,
         "turn_count": turn_count,
-        "at_repair_location": at_repair_location
+        "at_repair_location": at_repair_location,
+        "star_map": star_map,
+        "current_region_id": current_region_id,
+        "current_node_id": current_node_id
     }
     save_game(new_state)
-    print("Game reset. Starting a new adventure...")
+    print("Game reset. Starting a new adventure in a newly generated galaxy...")
 
 def start_game():
-    global player_stats, active_quest, turn_count, at_repair_location
+    global player_stats, active_quest, turn_count, at_repair_location, star_map, current_region_id, current_node_id
     print(f'Welcome to {config.GAME_NAME}! (Version: {config.GAME_VERSION})')
     print('Your journey through the stars begins now...')
     print('You are on board your spaceship, ready to explore the unknown.')
@@ -97,6 +115,23 @@ def start_game():
     active_quest = saved_state["active_quest"]
     turn_count = saved_state["turn_count"]
     at_repair_location = saved_state.get("at_repair_location", False)
+    
+    # Load or generate star map
+    star_map = saved_state.get("star_map")
+    if star_map is None:
+        # First time playing or old save - generate new map
+        star_map = generate_new_star_map()
+        
+    current_region_id = saved_state.get("current_region_id") or star_map["current_region"]
+    current_node_id = saved_state.get("current_node_id") or star_map["current_node"]
+    
+    # Display current location
+    if star_map and current_region_id and current_node_id:
+        region = star_map["regions"][current_region_id]
+        node = next((n for n in region["nodes"] if n["id"] == current_node_id), None)
+        if node:
+            print(f"Current Location: {node['name']} in {region['name']}")
+    
     display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
     game_loop()
 
@@ -242,7 +277,20 @@ def game_loop():
         elif event_chance < config.RANDOM_EVENT_CHANCE + 25:  # Moderately increased chance for random events
             random_event(player_stats)
         else:
-            at_repair_location = standard_navigation(player_stats)  # Update repair location status based on navigation
+            # Use region navigation system
+            navigation_result = region_navigation(player_stats, star_map, current_region_id, current_node_id)
+            if navigation_result:
+                current_region_id = navigation_result['current_region_id']
+                current_node_id = navigation_result['current_node_id']
+                at_repair_location = navigation_result['at_repair_location']
+                
+                # Mark node as visited
+                if star_map and current_region_id in star_map["regions"]:
+                    region = star_map["regions"][current_region_id]
+                    for node in region["nodes"]:
+                        if node["id"] == current_node_id:
+                            node["visited"] = True
+                            break
 
         # Milestone feedback every 5 turns
         if turn_count % 5 == 0:
@@ -300,7 +348,10 @@ def game_loop():
             "has_flight_pod": player_stats['has_flight_pod'],
             "active_quest": active_quest,
             "turn_count": turn_count,
-            "at_repair_location": at_repair_location
+            "at_repair_location": at_repair_location,
+            "star_map": star_map,
+            "current_region_id": current_region_id,
+            "current_node_id": current_node_id
         })
 
 def start_new_game_prompt():

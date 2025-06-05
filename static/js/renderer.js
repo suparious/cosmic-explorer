@@ -17,6 +17,16 @@ class Renderer {
         this.asteroids = [];
         this.particles = [];
         
+        // Current region theme
+        this.currentRegion = null;
+        this.regionTheme = {
+            primaryColor: '#4169E1',
+            secondaryColor: '#87CEEB',
+            starDensity: 1.0,
+            nebulaOpacity: 0.5,
+            ambientBrightness: 0.5
+        };
+        
         // Camera
         this.camera = {
             x: 0,
@@ -67,7 +77,10 @@ class Renderer {
     }
     
     generateStars() {
-        const count = GameConfig.visuals.starCount;
+        this.stars = [];  // Clear existing stars
+        const baseCount = GameConfig.visuals.starCount;
+        const count = Math.floor(baseCount * this.regionTheme.starDensity);
+        
         for (let i = 0; i < count; i++) {
             this.stars.push({
                 x: Math.random() * this.width * 2,
@@ -80,23 +93,29 @@ class Renderer {
     }
     
     generateNebulae() {
-        const colors = [
-            ['rgba(255, 0, 255, 0.1)', 'rgba(0, 255, 255, 0.1)'],
-            ['rgba(255, 255, 0, 0.1)', 'rgba(255, 0, 255, 0.1)'],
-            ['rgba(0, 255, 255, 0.1)', 'rgba(0, 255, 0, 0.1)']
-        ];
+        this.nebulae = [];  // Clear existing nebulae
+        
+        // Use region theme colors
+        const primary = this.hexToRgba(this.regionTheme.primaryColor, this.regionTheme.nebulaOpacity);
+        const secondary = this.hexToRgba(this.regionTheme.secondaryColor, this.regionTheme.nebulaOpacity * 0.7);
         
         for (let i = 0; i < GameConfig.visuals.nebulaCount; i++) {
-            const colorPair = colors[i % colors.length];
             this.nebulae.push({
                 x: Math.random() * this.width * 2,
                 y: Math.random() * this.height * 2,
                 radius: Math.random() * 300 + 200,
-                colors: colorPair,
+                colors: [primary, secondary],
                 rotation: Math.random() * Math.PI * 2,
                 rotationSpeed: (Math.random() - 0.5) * 0.001
             });
         }
+    }
+    
+    hexToRgba(hex, alpha) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
     
     updateCamera() {
@@ -108,8 +127,14 @@ class Renderer {
     }
     
     render(gameState) {
-        // Clear canvas
-        this.ctx.fillStyle = GameConfig.colors.space.deep;
+        // Update region theme if changed
+        if (gameState && gameState.current_location && gameState.current_location.region) {
+            this.updateRegionTheme(gameState.current_location.region);
+        }
+        
+        // Clear canvas with region-influenced background
+        const bgBrightness = Math.floor(15 * this.regionTheme.ambientBrightness);
+        this.ctx.fillStyle = `rgb(${bgBrightness}, ${bgBrightness}, ${bgBrightness + 5})`;
         this.ctx.fillRect(0, 0, this.width, this.height);
         
         // Update camera
@@ -704,6 +729,34 @@ class Renderer {
             rotation: 0,
             rotationSpeed: (Math.random() - 0.5) * 0.02
         });
+    }
+    
+    updateRegionTheme(region) {
+        // Only update if region has changed
+        if (this.currentRegion === region.id) return;
+        
+        this.currentRegion = region.id;
+        const config = region.config;
+        
+        if (config && config.background) {
+            // Smoothly transition to new theme
+            this.regionTheme = {
+                primaryColor: config.background.primary_color || '#4169E1',
+                secondaryColor: config.background.secondary_color || '#87CEEB',
+                starDensity: config.background.star_density || 1.0,
+                nebulaOpacity: config.background.nebula_opacity || 0.5,
+                ambientBrightness: config.background.ambient_brightness || 0.5
+            };
+            
+            // Regenerate background elements with new theme
+            this.generateStars();
+            this.generateNebulae();
+            
+            // Trigger music change
+            if (window.audioManager && config.music_theme) {
+                window.audioManager.changeRegionMusic(config.music_theme);
+            }
+        }
     }
     
     drawShipByType(shipType, shipColor) {

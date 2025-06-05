@@ -73,6 +73,27 @@ class AudioManager {
         }
     }
     
+    // Change music when entering a new region
+    changeRegionMusic(regionMusicTheme) {
+        if (this.musicEngine && regionMusicTheme) {
+            // Map region themes to music tracks
+            const themeMap = {
+                'station': 'station',
+                'danger': 'danger',
+                'exploration': 'exploration',
+                'combat': 'combat'
+            };
+            
+            const trackName = themeMap[regionMusicTheme] || 'exploration';
+            
+            // Only change if different from current track
+            if (trackName !== this.currentMusicTrack) {
+                this.currentMusicTrack = trackName;
+                this.musicEngine.play(trackName);
+            }
+        }
+    }
+    
     // Get visualization data for UI
     getVisualizationData() {
         if (this.musicEngine) {

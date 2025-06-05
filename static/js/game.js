@@ -273,8 +273,33 @@ class GameEngine {
     }
     
     showMap() {
-        // TODO: Implement star map
-        this.uiManager.showNotification('Star map coming soon!', 'info');
+        // Show star map with navigation options
+        if (this.gameState && this.gameState.star_map) {
+            this.fetchNavigationOptions().then(options => {
+                this.uiManager.showStarMap(this.gameState.star_map, options);
+            });
+        } else {
+            this.uiManager.showNotification('Star map unavailable!', 'error');
+        }
+    }
+    
+    async fetchNavigationOptions() {
+        try {
+            const response = await fetch(`${GameConfig.game.apiUrl}/game/navigation_options/${this.sessionId}`);
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error fetching navigation options:', error);
+            return { options: [] };
+        }
+    }
+    
+    async navigateToNode(nodeId) {
+        await this.sendAction('navigate', { target_node_id: nodeId });
+    }
+    
+    async navigateToRegion(regionId) {
+        await this.sendAction('navigate', { target_region_id: regionId });
     }
     
     buyPod() {

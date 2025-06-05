@@ -1532,6 +1532,282 @@ class UIManager {
             }
         );
     }
+    
+    showStarMap(starMap, navigationData) {
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('star-map-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'star-map-modal';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content star-map-content" style="max-width: 95%; width: 1200px; height: 90vh;">
+                    <div class="modal-header">
+                        <h3>🗺️ Star Map</h3>
+                        <button class="modal-close" onclick="window.uiManager.hideStarMap()">×</button>
+                    </div>
+                    <div class="star-map-body">
+                        <canvas id="star-map-canvas"></canvas>
+                        <div id="star-map-sidebar">
+                            <h4>Navigation Options</h4>
+                            <div id="navigation-options-list"></div>
+                            <div class="current-location-info">
+                                <h5>Current Location</h5>
+                                <div id="current-location-details"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Add styles
+            if (!document.getElementById('star-map-styles')) {
+                const style = document.createElement('style');
+                style.id = 'star-map-styles';
+                style.textContent = `
+                    .star-map-content {
+                        padding: 0;
+                        display: flex;
+                        flex-direction: column;
+                    }
+                    .star-map-body {
+                        display: flex;
+                        flex: 1;
+                        overflow: hidden;
+                    }
+                    #star-map-canvas {
+                        flex: 1;
+                        background: #000033;
+                        cursor: grab;
+                    }
+                    #star-map-canvas:active {
+                        cursor: grabbing;
+                    }
+                    #star-map-sidebar {
+                        width: 300px;
+                        background: var(--glass-bg);
+                        border-left: 2px solid var(--glass-border);
+                        padding: 1.5rem;
+                        overflow-y: auto;
+                    }
+                    #navigation-options-list {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 0.5rem;
+                        margin: 1rem 0;
+                    }
+                    .nav-option {
+                        background: rgba(0, 255, 255, 0.1);
+                        border: 1px solid var(--primary-color);
+                        border-radius: 8px;
+                        padding: 1rem;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                    }
+                    .nav-option:hover {
+                        background: rgba(0, 255, 255, 0.2);
+                        transform: translateX(5px);
+                    }
+                    .nav-option.region {
+                        border-color: var(--accent-color);
+                        background: rgba(255, 255, 0, 0.1);
+                    }
+                    .nav-option.region:hover {
+                        background: rgba(255, 255, 0, 0.2);
+                    }
+                    .nav-option-header {
+                        font-weight: 700;
+                        margin-bottom: 0.25rem;
+                    }
+                    .nav-option-details {
+                        font-size: 0.8rem;
+                        color: var(--text-secondary);
+                    }
+                    .current-location-info {
+                        margin-top: 2rem;
+                        padding-top: 1rem;
+                        border-top: 1px solid var(--glass-border);
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+        
+        // Render star map
+        modal.style.display = 'flex';
+        
+        // Setup canvas
+        const canvas = document.getElementById('star-map-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Resize canvas
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        
+        // Camera state
+        let camera = { x: 0, y: 0, zoom: 1 };
+        let isDragging = false;
+        let dragStart = { x: 0, y: 0 };
+        
+        // Mouse events
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            dragStart.x = e.clientX - camera.x;
+            dragStart.y = e.clientY - camera.y;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                camera.x = e.clientX - dragStart.x;
+                camera.y = e.clientY - dragStart.y;
+                renderMap();
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const scale = e.deltaY > 0 ? 0.9 : 1.1;
+            camera.zoom *= scale;
+            camera.zoom = Math.max(0.5, Math.min(2, camera.zoom));
+            renderMap();
+        });
+        
+        // Render navigation options
+        const optionsList = document.getElementById('navigation-options-list');
+        const currentLocationDiv = document.getElementById('current-location-details');
+        
+        if (navigationData.current_location) {
+            currentLocationDiv.innerHTML = `
+                <div><strong>Region:</strong> ${navigationData.current_location.region}</div>
+                <div><strong>Node:</strong> ${navigationData.current_location.node}</div>
+                <div><strong>Type:</strong> ${navigationData.current_location.type.replace('_', ' ')}</div>
+            `;
+        }
+        
+        optionsList.innerHTML = navigationData.options.map(option => {
+            if (option.type === 'node') {
+                return `
+                    <div class="nav-option" onclick="window.gameEngine.navigateToNode('${option.id}')">
+                        <div class="nav-option-header">📍 ${option.name}</div>
+                        <div class="nav-option-details">
+                            Type: ${option.node_type.replace('_', ' ')}<br>
+                            ${option.visited ? '✓ Visited' : '◇ Unvisited'}<br>
+                            ${option.has_repair ? '🔧 Repairs' : ''} ${option.has_trade ? '💰 Trade' : ''}<br>
+                            Fuel Cost: ${option.fuel_cost}
+                        </div>
+                    </div>
+                `;
+            } else if (option.type === 'region') {
+                return `
+                    <div class="nav-option region" onclick="window.gameEngine.navigateToRegion('${option.id}')">
+                        <div class="nav-option-header">🌌 ${option.name}</div>
+                        <div class="nav-option-details">
+                            Region Jump<br>
+                            Fuel Cost: ${option.fuel_cost}
+                        </div>
+                    </div>
+                `;
+            }
+        }).join('');
+        
+        // Render star map
+        function renderMap() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.save();
+            ctx.translate(canvas.width / 2 + camera.x, canvas.height / 2 + camera.y);
+            ctx.scale(camera.zoom, camera.zoom);
+            
+            // Draw region connections
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 2;
+            Object.values(starMap.regions).forEach(region => {
+                region.connections.forEach(targetId => {
+                    const target = starMap.regions[targetId];
+                    if (target) {
+                        ctx.beginPath();
+                        ctx.moveTo(region.position[0], region.position[1]);
+                        ctx.lineTo(target.position[0], target.position[1]);
+                        ctx.stroke();
+                    }
+                });
+            });
+            
+            // Draw regions
+            Object.values(starMap.regions).forEach(region => {
+                const x = region.position[0];
+                const y = region.position[1];
+                
+                // Region glow
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, 100);
+                gradient.addColorStop(0, region.config.background.primary_color + '40');
+                gradient.addColorStop(1, 'transparent');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, 100, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Region name
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = 'bold 16px Orbitron';
+                ctx.textAlign = 'center';
+                ctx.fillText(region.name, x, y - 120);
+                
+                // Draw nodes
+                region.nodes.forEach(node => {
+                    const nodeX = x + node.position[0] * 0.5;
+                    const nodeY = y + node.position[1] * 0.5;
+                    
+                    // Node connections
+                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+                    ctx.lineWidth = 1;
+                    node.connections.forEach(connId => {
+                        const connNode = region.nodes.find(n => n.id === connId);
+                        if (connNode) {
+                            const connX = x + connNode.position[0] * 0.5;
+                            const connY = y + connNode.position[1] * 0.5;
+                            ctx.beginPath();
+                            ctx.moveTo(nodeX, nodeY);
+                            ctx.lineTo(connX, connY);
+                            ctx.stroke();
+                        }
+                    });
+                    
+                    // Node circle
+                    const isCurrentNode = node.id === starMap.current_node;
+                    ctx.fillStyle = isCurrentNode ? '#FFD700' : (node.visited ? '#00FF00' : '#808080');
+                    ctx.beginPath();
+                    ctx.arc(nodeX, nodeY, isCurrentNode ? 8 : 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Node name (only for current or hovered)
+                    if (isCurrentNode) {
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.font = '12px Space Mono';
+                        ctx.fillText(node.name, nodeX, nodeY - 10);
+                    }
+                });
+            });
+            
+            ctx.restore();
+        }
+        
+        renderMap();
+    }
+    
+    hideStarMap() {
+        const modal = document.getElementById('star-map-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
 }
 
 // Export for use in other modules

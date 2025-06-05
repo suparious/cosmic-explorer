@@ -20,6 +20,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import config
 import game
+from regions import generate_new_star_map, get_region_visual_config
 
 # Ship type definitions
 SHIP_TYPES = {
@@ -381,46 +382,121 @@ POD_AUGMENTATIONS = {
 }
 
 # Web-compatible navigation function
-def web_navigation(player_stats, ship_type="scout", mods=None, augmentations=None):
-    """Navigation function for web interface that doesn't use terminal input"""
+def web_navigation(session, target_node_id=None, target_region_id=None):
+    """Navigation function for web interface that uses the region system"""
     import random
-    at_repair_location = False
     
-    # Random choice if not specified
-    choice = random.choice(['planet', 'route'])
+    if not session.star_map:
+        # Fallback if no star map
+        at_repair_location = random.choice([True, False])
+        message = "Navigation system offline. Moving through unknown space."
+        return at_repair_location, message, None
     
-    # Get ship stats
-    ship_info = SHIP_TYPES.get(ship_type, SHIP_TYPES["scout"])
+    current_region = session.star_map['regions'][session.current_region_id]
+    current_node = None
+    for node in current_region['nodes']:
+        if node['id'] == session.current_node_id:
+            current_node = node
+            break
     
-    # Calculate fuel consumption with ship and mod effects
+    if not current_node:
+        return False, "Navigation error: Current location unknown.", None
+    
+    # Get ship stats for fuel calculation
+    ship_info = SHIP_TYPES.get(session.player_stats.get('ship_type', 'scout'), SHIP_TYPES["scout"])
     base_fuel = config.FUEL_CONSUMPTION_RATE
     fuel_efficiency = ship_info["fuel_efficiency"]
     
     # Apply mod effects
-    if mods:
-        for slot_mods in mods.values():
-            for mod_id in slot_mods:
-                if mod_id in SHIP_MODS:
-                    mod_effects = SHIP_MODS[mod_id].get("effects", {})
-                    if "fuel_efficiency" in mod_effects:
-                        fuel_efficiency *= mod_effects["fuel_efficiency"]
+    mods = session.player_stats.get('ship_mods', {})
+    for slot_mods in mods.values():
+        for mod_id in slot_mods:
+            if mod_id in SHIP_MODS:
+                mod_effects = SHIP_MODS[mod_id].get("effects", {})
+                if "fuel_efficiency" in mod_effects:
+                    fuel_efficiency *= mod_effects["fuel_efficiency"]
     
     # Apply pod augmentation effects
-    if augmentations and 'emergency_thrusters' in augmentations:
-        fuel_efficiency *= 0.8  # 20% reduction
+    if 'emergency_thrusters' in session.player_stats.get('pod_augmentations', []):
+        fuel_efficiency *= 0.8
     
-    fuel_consumption = int(base_fuel * fuel_efficiency)
+    # Navigation within region
+    if target_node_id and not target_region_id:
+        # Find target node
+        target_node = None
+        for node in current_region['nodes']:
+            if node['id'] == target_node_id:
+                target_node = node
+                break
+        
+        if not target_node or target_node_id not in current_node['connections']:
+            return False, "Cannot navigate to that location.", None
+        
+        fuel_cost = int(base_fuel * fuel_efficiency)
+        if session.player_stats['fuel'] < fuel_cost:
+            return False, "Insufficient fuel.", None
+        
+        session.player_stats['fuel'] -= fuel_cost
+        session.current_node_id = target_node_id
+        
+        # Random events during travel
+        if random.random() < target_node['danger_level']:
+            damage = random.randint(5, 15)
+            session.player_stats['ship_condition'] -= damage
+            message = f"Danger encountered! Ship damaged (-{damage} HP). Arrived at {target_node['name']}."
+            event_type = "danger"
+        else:
+            message = f"Traveled safely to {target_node['name']}."
+            event_type = "navigation"
+        
+        # Mark as visited
+        target_node['discovered'] = True
+        target_node['visited'] = True
+        
+        return target_node['has_repair'], message, event_type
     
-    if choice == 'planet':
-        player_stats['ship_condition'] -= 5
-        player_stats['fuel'] -= fuel_consumption
-        at_repair_location = True
-        message = "You approach a planet and dock at an outpost. Repairs available!"
+    # Region jump
+    elif target_region_id:
+        if target_region_id not in current_region['connections']:
+            return False, "Cannot jump to that region from here.", None
+        
+        fuel_cost = 20 if current_node['type'] == 'wormhole' else 50
+        if session.player_stats['fuel'] < fuel_cost:
+            return False, "Insufficient fuel for region jump.", None
+        
+        session.player_stats['fuel'] -= fuel_cost
+        target_region = session.star_map['regions'][target_region_id]
+        
+        # Find entry node
+        entry_node = None
+        for node in target_region['nodes']:
+            if node['discovered']:
+                entry_node = node
+                break
+        
+        if not entry_node:
+            entry_node = random.choice(target_region['nodes'])
+            entry_node['discovered'] = True
+            session.player_stats['wealth'] += 100
+            message = f"Discovered new region: {target_region['name']}! (+100 wealth) Arrived at {entry_node['name']}."
+        else:
+            message = f"Jumped to {target_region['name']}. Arrived at {entry_node['name']}."
+        
+        session.current_region_id = target_region_id
+        session.current_node_id = entry_node['id']
+        
+        return entry_node['has_repair'], message, "navigation"
+    
+    # Auto-navigation (random choice)
     else:
-        player_stats['fuel'] -= fuel_consumption
-        message = "You proceed smoothly through space."
-    
-    return at_repair_location, message
+        # Get available options
+        connected_nodes = [n for n in current_region['nodes'] if n['id'] in current_node['connections']]
+        
+        if connected_nodes:
+            target = random.choice(connected_nodes)
+            return web_navigation(session, target_node_id=target['id'])
+        else:
+            return current_node['has_repair'], "No available destinations.", "info"
 
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
 CORS(app)
@@ -468,6 +544,11 @@ class GameSession:
         self.current_event = None
         self.available_choices = []
         
+        # Star map and region data
+        self.star_map = generate_new_star_map()
+        self.current_region_id = self.star_map["current_region"]
+        self.current_node_id = self.star_map["current_node"]
+        
     def calculate_cargo_space(self):
         """Calculate used cargo space from inventory"""
         used_space = 0
@@ -513,6 +594,18 @@ class GameSession:
     
     def to_dict(self):
         effective_stats = self.get_effective_stats()
+        
+        # Get current location info
+        current_region = None
+        current_node = None
+        if self.star_map and self.current_region_id and self.current_node_id:
+            current_region = self.star_map['regions'].get(self.current_region_id)
+            if current_region:
+                for node in current_region['nodes']:
+                    if node['id'] == self.current_node_id:
+                        current_node = node
+                        break
+        
         return {
             "player_stats": effective_stats,
             "active_quest": self.active_quest,
@@ -526,7 +619,14 @@ class GameSession:
             "pod_augmentations_info": {aug_id: POD_AUGMENTATIONS[aug_id] for aug_id in self.player_stats.get('pod_augmentations', [])},
             "ship_types": SHIP_TYPES,
             "ship_mods": SHIP_MODS,
-            "item_types": ITEM_TYPES
+            "item_types": ITEM_TYPES,
+            "star_map": self.star_map,
+            "current_region_id": self.current_region_id,
+            "current_node_id": self.current_node_id,
+            "current_location": {
+                "region": current_region,
+                "node": current_node
+            } if current_region and current_node else None
         }
 
 @app.route('/')
@@ -596,6 +696,70 @@ def get_ship_info(session_id):
         }
         
         return jsonify(ship_info)
+
+@app.route('/api/game/navigation_options/<session_id>', methods=['GET'])
+def get_navigation_options(session_id):
+    """Get available navigation options"""
+    with game_lock:
+        if session_id not in game_sessions:
+            return jsonify({"error": "Session not found"}), 404
+        
+        session = game_sessions[session_id]
+        
+        if not session.star_map:
+            return jsonify({"options": []})
+        
+        options = []
+        current_region = session.star_map['regions'][session.current_region_id]
+        current_node = None
+        
+        for node in current_region['nodes']:
+            if node['id'] == session.current_node_id:
+                current_node = node
+                break
+        
+        if not current_node:
+            return jsonify({"options": []})
+        
+        # Add connected nodes
+        for node_id in current_node['connections']:
+            for node in current_region['nodes']:
+                if node['id'] == node_id:
+                    options.append({
+                        "type": "node",
+                        "id": node['id'],
+                        "name": node['name'],
+                        "node_type": node['type'],
+                        "visited": node['visited'],
+                        "has_repair": node['has_repair'],
+                        "has_trade": node['has_trade'],
+                        "danger_level": node['danger_level'],
+                        "fuel_cost": config.FUEL_CONSUMPTION_RATE
+                    })
+                    break
+        
+        # Add region jumps if available
+        if current_node['type'] == 'wormhole' or session.player_stats['fuel'] >= 50:
+            for region_id in current_region['connections']:
+                if region_id in session.star_map['regions']:
+                    other_region = session.star_map['regions'][region_id]
+                    fuel_cost = 20 if current_node['type'] == 'wormhole' else 50
+                    options.append({
+                        "type": "region",
+                        "id": region_id,
+                        "name": other_region['name'],
+                        "region_type": other_region['type'],
+                        "fuel_cost": fuel_cost
+                    })
+        
+        return jsonify({
+            "options": options,
+            "current_location": {
+                "region": current_region['name'],
+                "node": current_node['name'],
+                "type": current_node['type']
+            }
+        })
 
 @app.route('/api/game/action/<session_id>', methods=['POST'])
 def perform_action(session_id, action_type=None):
@@ -711,9 +875,14 @@ def process_action(session, action, choice=None, data=None):
         if 'just_bought_pod' in session.player_stats:
             session.player_stats['just_bought_pod'] = False
         
+        # Get navigation target from data
+        target_node_id = data.get('target_node_id') if data else None
+        target_region_id = data.get('target_region_id') if data else None
+        
         # Pod mode navigation is dangerous
         if session.player_stats['in_pod_mode']:
-            session.at_repair_location, nav_message = web_navigation(session.player_stats)
+            # Simplified navigation in pod mode
+            session.at_repair_location, nav_message, event_type = web_navigation(session, target_node_id, target_region_id)
             
             # Pod takes damage during travel
             damage_chance = random.random()
@@ -726,21 +895,16 @@ def process_action(session, action, choice=None, data=None):
             else:
                 session.player_stats['pod_animation_state'] = "active"
                 result['event'] = f"{nav_message} Pod holding steady. Pod HP: {session.player_stats['pod_hp']}/{session.player_stats['pod_max_hp']}"
-                result['event_type'] = "navigation"
+                result['event_type'] = event_type or "navigation"
                 
             # Check if reached safety
             if session.at_repair_location:
                 result['choices'] = ["Buy new ship (400+ wealth)", "Wait and conserve resources"]
         else:
-            # Pass ship type, mods, and augmentations for calculations
-            session.at_repair_location, nav_message = web_navigation(
-                session.player_stats,
-                ship_type=session.player_stats.get('ship_type', 'scout'),
-                mods=session.player_stats.get('ship_mods', {}),
-                augmentations=session.player_stats.get('pod_augmentations', [])
-            )
+            # Regular navigation with region system
+            session.at_repair_location, nav_message, event_type = web_navigation(session, target_node_id, target_region_id)
             result['event'] = nav_message
-            result['event_type'] = "navigation"
+            result['event_type'] = event_type or "navigation"
         
     elif action == "event":
         # Enhanced random events that can give items
