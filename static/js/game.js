@@ -41,6 +41,7 @@ class GameEngine {
             
             console.log('Creating UIManager...');
             this.uiManager = new UIManager();
+            window.uiManager = this.uiManager; // Set global instance for onclick handlers
             console.log('UIManager created:', this.uiManager);
             
             // Generate initial space environment
