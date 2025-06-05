@@ -5,6 +5,8 @@ import random
 import json
 import os
 from config import config  # Import game configuration
+from events import offer_quest, random_event  # Import event-related functions
+from navigation import standard_navigation  # Import navigation functions
 
 # Player stats initialized from config
 player_stats = {
@@ -81,14 +83,16 @@ def game_loop():
             print(f"Game Over: You've reached the maximum number of turns ({config.MAX_TURNS}). Your journey ends here.")
             break
 
-        # Random event or quest opportunity based on config probabilities
+        # Adjusted probabilities to increase event frequency for more engagement
         event_chance = random.random() * 100
-        if event_chance < config.QUEST_OFFER_CHANCE and not active_quest:
-            offer_quest()
-        elif event_chance < config.RANDOM_EVENT_CHANCE:
-            random_event()
+        if event_chance < config.QUEST_OFFER_CHANCE + 10 and not active_quest:  # Increased chance for quests
+            offer_quest(player_stats, active_quest)
+            if active_quest:
+                continue
+        elif event_chance < config.RANDOM_EVENT_CHANCE + 20:  # Increased chance for random events
+            random_event(player_stats)
         else:
-            standard_navigation()
+            standard_navigation(player_stats)
 
         display_stats()
         # Automatically save progress after each action
@@ -100,48 +104,6 @@ def game_loop():
             "active_quest": active_quest,
             "turn_count": turn_count
         })
-
-def offer_quest():
-    global active_quest
-    quests = [
-        {"name": "Rescue Mission", "reward": 300, "risk": "health", "status": "Locate stranded crew"},
-        {"name": "Artifact Hunt", "reward": 500, "risk": "ship_condition", "status": "Find ancient relic"}
-    ]
-    quest = random.choice(quests)
-    print(f"\nA new quest is available: {quest['name']}")
-    print('1. Accept the quest.')
-    print('2. Decline and continue exploring.')
-    choice = input('Enter your choice (1 or 2): ')
-    if choice == '1':
-        active_quest = quest
-        print(f"You’ve accepted the quest: {quest['name']}.")
-
-def random_event():
-    events = [
-        ("Encounter alien traders", "wealth", 100, "You trade successfully! Wealth increased."),
-        ("Hit by cosmic anomaly", "ship_condition", -20, "Your ship takes damage! Ship condition decreased."),
-        ("Discover abandoned ship", "wealth", 150, "You salvage resources! Wealth increased."),
-        ("Navigate through asteroid field", "fuel", -10, "Maneuvering consumes extra fuel! Fuel decreased.")
-    ]
-    event, stat, change, message = random.choice(events)
-    print(f"\nEvent: {event}")
-    player_stats[stat] += change
-    print(message)
-
-def standard_navigation():
-    print('\nYou chart a course through space.')
-    print('1. Investigate a nearby planet.')
-    print('2. Continue on your planned route.')
-    choice = input('Enter your choice (1 or 2): ')
-    if choice == '1':
-        print('You approach the planet...')
-        player_stats['ship_condition'] -= 5
-        player_stats['fuel'] -= config.FUEL_CONSUMPTION_RATE
-        print(f"Exploration takes a toll. Ship condition slightly decreased. Fuel consumed: {config.FUEL_CONSUMPTION_RATE}.")
-    elif choice == '2':
-        print('You proceed smoothly on your route.')
-        player_stats['fuel'] -= config.FUEL_CONSUMPTION_RATE
-        print(f"Fuel consumed during navigation: {config.FUEL_CONSUMPTION_RATE}.")
 
 if __name__ == '__main__':
     start_game()
