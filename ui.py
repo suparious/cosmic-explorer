@@ -6,11 +6,12 @@ from config import config  # Import config for fuel reference
 
 term = Terminal()
 
-def get_ship_ascii(ship_condition, current_event="Exploring"):
-    """Return ASCII art for the ship based on condition and current event."""
+def get_ship_ascii(ship_condition, current_event="Exploring", has_flight_pod=False):
+    """Return ASCII art for the ship based on condition, current event, and flight pod ownership."""
+    pod_icon = " [Pod]" if has_flight_pod else ""
     if ship_condition > 70:
-        ship = """
-       ____
+        ship = f"""
+       ____{pod_icon}
       /    \\
      /      \\
     /________\\
@@ -18,8 +19,8 @@ def get_ship_ascii(ship_condition, current_event="Exploring"):
     |________|
 """
     elif ship_condition > 30:
-        ship = """
-       ____
+        ship = f"""
+       ____{pod_icon}
       /    \\
      /  *   \\
     /___*____\\
@@ -27,8 +28,8 @@ def get_ship_ascii(ship_condition, current_event="Exploring"):
     |___*____|
 """
     else:
-        ship = """
-       ____
+        ship = f"""
+       ____{pod_icon}
       / *  \\
      /  *   \\
     /_*_*____\\
@@ -88,7 +89,7 @@ def display_dashboard(player_stats, active_quest, turn_count, max_turns):
     # Display ASCII art for ship and player avatars
     with term.location(40, 1):
         ship_event = "Exploring" if not active_quest else active_quest['name']
-        print(term.blue + get_ship_ascii(player_stats['ship_condition'], ship_event) + term.normal)
+        print(term.blue + get_ship_ascii(player_stats['ship_condition'], ship_event, player_stats['has_flight_pod']) + term.normal)
     
     with term.location(60, 1):
         print(term.green + get_player_ascii(player_stats['health'], player_stats['wealth']) + term.normal)

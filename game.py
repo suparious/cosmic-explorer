@@ -15,7 +15,8 @@ player_stats = {
     "wealth": config.STARTING_WEALTH,
     "ship_condition": config.STARTING_SHIP_CONDITION,
     "fuel": config.STARTING_FUEL,
-    "food": config.STARTING_FOOD
+    "food": config.STARTING_FOOD,
+    "has_flight_pod": False  # Track flight pod ownership
 }
 
 # Quest tracking
@@ -34,6 +35,7 @@ def load_game():
             "ship_condition": config.STARTING_SHIP_CONDITION,
             "fuel": config.STARTING_FUEL,
             "food": config.STARTING_FOOD,
+            "has_flight_pod": False,
             "active_quest": None,
             "turn_count": 0
         }
@@ -50,7 +52,8 @@ def reset_game():
         "wealth": config.STARTING_WEALTH,
         "ship_condition": config.STARTING_SHIP_CONDITION,
         "fuel": config.STARTING_FUEL,
-        "food": config.STARTING_FOOD
+        "food": config.STARTING_FOOD,
+        "has_flight_pod": False
     }
     active_quest = None
     turn_count = 0
@@ -60,6 +63,7 @@ def reset_game():
         "ship_condition": player_stats['ship_condition'],
         "fuel": player_stats['fuel'],
         "food": player_stats['food'],
+        "has_flight_pod": player_stats['has_flight_pod'],
         "active_quest": active_quest,
         "turn_count": turn_count
     }
@@ -78,7 +82,8 @@ def start_game():
         "wealth": saved_state["wealth"],
         "ship_condition": saved_state["ship_condition"],
         "fuel": saved_state.get("fuel", config.STARTING_FUEL),
-        "food": saved_state.get("food", config.STARTING_FOOD)
+        "food": saved_state.get("food", config.STARTING_FOOD),
+        "has_flight_pod": saved_state.get("has_flight_pod", False)
     })
     active_quest = saved_state["active_quest"]
     turn_count = saved_state["turn_count"]
@@ -100,10 +105,48 @@ def buy_flight_pod():
     cost = 500
     if player_stats['wealth'] >= cost:
         player_stats['wealth'] -= cost
-        display_event(f"Flight pod purchased for {cost} wealth! You can now travel to planets or stations to buy a new ship.")
-        # Additional logic for flight pod usage can be added later
+        player_stats['has_flight_pod'] = True
+        display_event(f"Flight pod purchased for {cost} wealth! You can now use it if your ship is destroyed to reach safety.")
     else:
         display_event("Insufficient wealth to buy a flight pod. You need at least 500 wealth.")
+
+def use_flight_pod():
+    global player_stats
+    display_event("Your ship is destroyed, but you have a flight pod. What would you like to do?")
+    display_choices(["Go to nearest planet or outpost (risky journey)", "Do nothing (wait for rescue)"])
+    choice = input()
+    if choice == '1':
+        # Add risk to flight pod journey
+        risk_chance = random.random()
+        if risk_chance < 0.2:  # 20% chance of failure
+            player_stats['health'] -= 20
+            display_event("The journey in the flight pod was harsh! Cosmic radiation and tight quarters take a toll. Health decreased by 20.")
+            if player_stats['health'] <= 0:
+                display_event("Game Over: The flight pod journey was too much. Your health has depleted.")
+                return False
+        else:
+            display_event("You safely reach the nearest outpost in your flight pod. A chance for a new beginning!")
+        
+        # Offer to buy a new ship if journey successful or health still above 0
+        if player_stats['health'] > 0:
+            display_event("At the outpost, you can purchase a new ship. What would you like to do?")
+            display_choices(["Purchase a new ship (400 wealth, restores ship condition)", "Do nothing (wait for other opportunities)"])
+            ship_choice = input()
+            if ship_choice == '1' and player_stats['wealth'] >= 400:
+                player_stats['wealth'] -= 400
+                player_stats['ship_condition'] = config.STARTING_SHIP_CONDITION
+                display_event("New ship purchased for 400 wealth! Your ship condition is fully restored. Ready to explore again!")
+                return True
+            else:
+                if player_stats['wealth'] < 400:
+                    display_event("Insufficient wealth to buy a new ship. You need at least 400 wealth.")
+                else:
+                    display_event("You decide to wait for other opportunities at the outpost.")
+                return False
+    else:
+        display_event("You decide to wait for rescue in the wreckage. Unfortunately, no help arrives in time.")
+        return False
+    return False
 
 def game_loop():
     global active_quest, turn_count, milestones_reached
@@ -119,11 +162,24 @@ def game_loop():
                 break
         if player_stats['ship_condition'] <= 0:
             display_event("Game Over: Your ship is destroyed. You're stranded in space.")
-            if start_new_game_prompt():
-                reset_game()
-                display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
-                continue
+            if player_stats['has_flight_pod']:
+                if use_flight_pod():
+                    display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
+                    continue  # Continue game if new ship is purchased
+                else:
+                    if player_stats['health'] <= 0:
+                        if start_new_game_prompt():
+                            reset_game()
+                            display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
+                            continue
+                    else:
+                        display_event("Game Over: No further options available after using the flight pod.")
+                    break
             else:
+                if start_new_game_prompt():
+                    reset_game()
+                    display_dashboard(player_stats, active_quest, turn_count, config.MAX_TURNS)
+                    continue
                 break
         if player_stats['fuel'] <= config.MINIMUM_FUEL_THRESHOLD:
             display_event("Game Over: You've run out of fuel. You're stranded in space.")
@@ -178,14 +234,18 @@ def game_loop():
             else:
                 display_event("You decide to conserve food supplies.")
 
-        # Option to upgrade ship or buy flight pod if wealth is sufficient
+        # Option to upgrade ship or buy flight pod if wealth is sufficient and conditions are met
         if player_stats['wealth'] >= 300:
-            display_event("You have enough wealth to upgrade your ship or buy a flight pod. What would you like to do?")
-            display_choices(["Upgrade ship (300 wealth, +30 ship condition)", "Buy flight pod (500 wealth)", "Do nothing"])
+            display_event("You have enough wealth to spend. What would you like to do?")
+            choices = ["Upgrade ship (300 wealth, +30 ship condition)"]
+            if not player_stats['has_flight_pod']:
+                choices.append("Buy flight pod (500 wealth)")
+            choices.append("Do nothing")
+            display_choices(choices)
             choice = input()
             if choice == '1':
                 upgrade_ship()
-            elif choice == '2' and player_stats['wealth'] >= 500:
+            elif choice == '2' and not player_stats['has_flight_pod'] and player_stats['wealth'] >= 500:
                 buy_flight_pod()
             else:
                 display_event("You decide to do nothing with your wealth for now.")
@@ -198,6 +258,7 @@ def game_loop():
             "ship_condition": player_stats['ship_condition'],
             "fuel": player_stats['fuel'],
             "food": player_stats['food'],
+            "has_flight_pod": player_stats['has_flight_pod'],
             "active_quest": active_quest,
             "turn_count": turn_count
         })
