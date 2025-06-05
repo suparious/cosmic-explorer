@@ -442,16 +442,22 @@ def process_action(session, action, choice=None, data=None):
             result['event_type'] = "purchase"
             
     elif action == "consume_food":
-        if session.player_stats['food'] >= 10:
-            session.player_stats['food'] -= 10
+        # Get amount from data, default to 10 for backward compatibility
+        amount = data.get('amount', 10) if data else 10
+        health_gain = amount * 2  # Each food unit restores 2 health
+        
+        if session.player_stats['food'] >= amount:
+            session.player_stats['food'] -= amount
+            old_health = session.player_stats['health']
             session.player_stats['health'] = min(
-                session.player_stats['health'] + 20,
+                session.player_stats['health'] + health_gain,
                 config.STARTING_HEALTH
             )
-            result['event'] = "Food consumed, health restored!"
-            result['event_type'] = "consume"
+            actual_health_gained = session.player_stats['health'] - old_health
+            result['event'] = f"Consumed {amount} food units. Health restored by {actual_health_gained} points!"
+            result['event_type'] = "heal"
         else:
-            result['event'] = "Insufficient food supplies."
+            result['event'] = f"Insufficient food supplies. Need {amount} but only have {session.player_stats['food']}."
             result['event_type'] = "error"
     
     return result

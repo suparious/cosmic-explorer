@@ -116,6 +116,16 @@ class GameEngine {
                 this.audioManager.playExplosionSound();
                 this.renderer.createExplosion(this.renderer.ship.x, this.renderer.ship.y);
                 break;
+            case 'heal':
+                this.audioManager.playSound('success');
+                this.createHealingEffect();
+                // Add healing animation to health bar
+                const healthBar = document.querySelector('.health-fill');
+                if (healthBar) {
+                    healthBar.parentElement.classList.add('healing-effect');
+                    setTimeout(() => healthBar.parentElement.classList.remove('healing-effect'), 1000);
+                }
+                break;
             case 'pod_activated':
                 this.audioManager.playAlertSound();
                 this.createPodEjectionEffect();
@@ -287,6 +297,10 @@ class GameEngine {
     
     buyAugmentation(augmentationId) {
         this.sendAction('buy_augmentation', { augmentation_id: augmentationId });
+    }
+    
+    consumeFood(amount) {
+        this.sendAction('consume_food', { amount: amount });
     }
     
     // Visual effects

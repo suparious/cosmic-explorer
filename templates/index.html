@@ -75,7 +75,7 @@
                             <span class="resource-icon">💰</span>
                             <span class="resource-value" id="wealth-value">500</span>
                         </div>
-                        <div class="resource-item">
+                        <div class="resource-item" id="food-resource" style="cursor: pointer; transition: all 0.3s ease;" onclick="if(window.uiManager) window.uiManager.showFoodModal()">
                             <span class="resource-icon">🍞</span>
                             <span class="resource-value" id="food-value">50</span>
                         </div>
@@ -135,6 +135,17 @@
                     <div class="modal-content">
                         <h3 id="choice-title">Make a Choice</h3>
                         <div id="choice-list" class="choice-list"></div>
+                    </div>
+                </div>
+
+                <!-- Food Consumption Modal -->
+                <div id="food-modal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <h3>🍞 Food Supply Management</h3>
+                        <div id="food-modal-content">
+                            <!-- Content will be dynamically generated -->
+                        </div>
+                        <button class="menu-btn" onclick="if(window.uiManager) window.uiManager.hideFoodModal()">Close</button>
                     </div>
                 </div>
 
