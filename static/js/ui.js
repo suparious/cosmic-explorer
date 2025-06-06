@@ -1028,17 +1028,24 @@ class UIManager {
             const response = await fetch(`/api/saves/${slot}`);
             if (response.ok) {
                 const data = await response.json();
-                if (data.success && !data.is_autosave) {
-                    this.showChoiceModal(
-                        'Overwrite Save?',
-                        ['Yes, overwrite this save', 'No, cancel'],
-                        async (choice) => {
-                            if (choice === 1) {
-                                await this.performSave(slot, sessionId);
+                if (data.success) {
+                    // Slot has a save - check if it's autosave or manual save
+                    if (data.is_autosave) {
+                        // Autosave slot - proceed without confirmation
+                        await this.performSave(slot, sessionId);
+                    } else {
+                        // Manual save exists - ask for confirmation
+                        this.showChoiceModal(
+                            'Overwrite Save?',
+                            ['Yes, overwrite this save', 'No, cancel'],
+                            async (choice) => {
+                                if (choice === 1) {
+                                    await this.performSave(slot, sessionId);
+                                }
                             }
-                        }
-                    );
-                    return;
+                        );
+                    }
+                    return; // Important: return here to prevent fall-through
                 }
             } else if (response.status === 404) {
                 // Slot is empty, proceed with save
@@ -1048,9 +1055,8 @@ class UIManager {
         } catch (error) {
             // Network error, try to save anyway
             console.warn('Could not check save slot:', error);
+            await this.performSave(slot, sessionId);
         }
-        
-        await this.performSave(slot, sessionId);
     }
     
     async performSave(slot, sessionId) {
