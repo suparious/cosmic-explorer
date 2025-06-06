@@ -30,8 +30,10 @@ class GameConfig:
     DIFFICULTY_LEVEL = os.getenv('DIFFICULTY_LEVEL', 'Medium')
     MAX_TURNS = int(os.getenv('MAX_TURNS', 50))
     
-    # Save file location
-    SAVE_FILE_PATH = os.getenv('SAVE_FILE_PATH', 'save_game.json')  # Save in current directory
+    # Save system configuration
+    SAVE_DIR_PATH = os.getenv('SAVE_DIR_PATH', 'saves')  # Directory for save files
+    MAX_SAVE_SLOTS = int(os.getenv('MAX_SAVE_SLOTS', 5))  # Number of save slots available
+    AUTO_SAVE_SLOT = 0  # Slot 0 is reserved for auto-save
     
     # WebSocket and server settings for future UI integration
     WEBSOCKET_HOST = os.getenv('WEBSOCKET_HOST', 'localhost')

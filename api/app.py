@@ -21,6 +21,8 @@ from inventory_system import ITEM_TYPES, InventoryManager
 from pod_system import POD_AUGMENTATIONS, PodManager
 from session_manager import SessionManager
 from action_processor import ActionProcessor
+from save_manager import (save_game_to_slot, load_game_from_slot, list_all_saves,
+                         delete_save_slot, get_save_info, get_current_location_name)
 
 # Initialize Flask app
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
@@ -425,19 +427,193 @@ def get_statistics(session_id):
         return jsonify(session.statistics)
 
 
-@app.route('/api/game/save/<session_id>', methods=['POST'])
-def save_game(session_id):
-    """Save game to file"""
+@app.route('/api/saves', methods=['GET'])
+def list_saves():
+    """List all save files with metadata"""
+    try:
+        saves = list_all_saves()
+        return jsonify({
+            "success": True,
+            "saves": saves,
+            "max_slots": config.MAX_SAVE_SLOTS
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/saves/<int:slot>', methods=['POST'])
+def save_to_slot(slot):
+    """Save current game to a specific slot"""
+    if slot < 0 or slot >= config.MAX_SAVE_SLOTS:
+        return jsonify({
+            "success": False,
+            "error": f"Invalid slot number. Must be between 0 and {config.MAX_SAVE_SLOTS-1}"
+        }), 400
+    
+    data = request.json
+    session_id = data.get('session_id', 'default')
+    
     with game_lock:
         session = session_manager.get_session(session_id)
         if not session:
             return jsonify({"error": "Session not found"}), 404
         
         try:
-            filepath = session.save_to_file()
+            # Get current location name
+            location_name = get_current_location_name(
+                session.star_map,
+                session.current_region_id,
+                session.current_node_id
+            )
+            
+            # Save to slot
+            metadata = save_game_to_slot(session.to_dict(), slot, location_name)
+            
             return jsonify({
                 "success": True,
-                "filepath": filepath
+                "slot": slot,
+                "metadata": metadata
+            })
+        except Exception as e:
+            return jsonify({
+                "success": False,
+                "error": str(e)
+            }), 500
+
+
+@app.route('/api/saves/<int:slot>', methods=['GET'])
+def get_save_slot_info(slot):
+    """Get information about a specific save slot"""
+    if slot < 0 or slot >= config.MAX_SAVE_SLOTS:
+        return jsonify({
+            "success": False,
+            "error": f"Invalid slot number. Must be between 0 and {config.MAX_SAVE_SLOTS-1}"
+        }), 400
+    
+    try:
+        save_info = get_save_info(slot)
+        if save_info:
+            return jsonify({
+                "success": True,
+                "slot": slot,
+                "metadata": save_info,
+                "is_autosave": slot == config.AUTO_SAVE_SLOT
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "No save found in this slot"
+            }), 404
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/saves/<int:slot>', methods=['DELETE'])
+def delete_save(slot):
+    """Delete a save file from a specific slot"""
+    if slot < 0 or slot >= config.MAX_SAVE_SLOTS:
+        return jsonify({
+            "success": False,
+            "error": f"Invalid slot number. Must be between 0 and {config.MAX_SAVE_SLOTS-1}"
+        }), 400
+    
+    # Prevent deleting auto-save while game is active
+    if slot == config.AUTO_SAVE_SLOT:
+        return jsonify({
+            "success": False,
+            "error": "Cannot delete auto-save slot"
+        }), 400
+    
+    try:
+        deleted = delete_save_slot(slot)
+        if deleted:
+            return jsonify({
+                "success": True,
+                "message": f"Save in slot {slot} deleted"
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "No save found in this slot"
+            }), 404
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/load/<int:slot>', methods=['POST'])
+def load_from_slot(slot):
+    """Load a game from a specific slot"""
+    if slot < 0 or slot >= config.MAX_SAVE_SLOTS:
+        return jsonify({
+            "success": False,
+            "error": f"Invalid slot number. Must be between 0 and {config.MAX_SAVE_SLOTS-1}"
+        }), 400
+    
+    data = request.json
+    session_id = data.get('session_id', 'default')
+    
+    with game_lock:
+        try:
+            # Load save data
+            saved_state = load_game_from_slot(slot)
+            if not saved_state:
+                return jsonify({
+                    "success": False,
+                    "error": "No save found in this slot"
+                }), 404
+            
+            # Create new session and load state
+            session = session_manager.create_session(session_id, force_new=True)
+            session.load_from_dict(saved_state)
+            
+            # Emit loaded game state via WebSocket
+            socketio.emit('game_state', session.to_dict(), room=session_id)
+            
+            return jsonify({
+                "success": True,
+                "session_id": session_id,
+                "game_state": session.to_dict()
+            })
+        except Exception as e:
+            return jsonify({
+                "success": False,
+                "error": str(e)
+            }), 500
+
+
+# Backwards compatibility - keep old save endpoint
+@app.route('/api/game/save/<session_id>', methods=['POST'])
+def save_game_legacy(session_id):
+    """Legacy save endpoint - saves to auto-save slot"""
+    with game_lock:
+        session = session_manager.get_session(session_id)
+        if not session:
+            return jsonify({"error": "Session not found"}), 404
+        
+        try:
+            # Get current location name
+            location_name = get_current_location_name(
+                session.star_map,
+                session.current_region_id,
+                session.current_node_id
+            )
+            
+            # Save to auto-save slot
+            metadata = save_game_to_slot(session.to_dict(), config.AUTO_SAVE_SLOT, location_name)
+            
+            return jsonify({
+                "success": True,
+                "slot": config.AUTO_SAVE_SLOT,
+                "metadata": metadata
             })
         except Exception as e:
             return jsonify({

@@ -18,6 +18,9 @@ window.addEventListener('DOMContentLoaded', async () => {
             throw new Error('UI Manager failed to initialize');
         }
         
+        // Setup keyboard shortcuts for save/load
+        window.gameUI.setupKeyboardShortcuts();
+        
         // Simulate loading
         setTimeout(() => {
             // Hide loading screen and show main menu

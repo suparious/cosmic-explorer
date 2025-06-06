@@ -9,6 +9,8 @@ from events import offer_quest, random_event  # Import event-related functions
 from navigation import standard_navigation, region_navigation  # Import navigation functions
 from ui import display_dashboard, display_event, display_choices  # Import UI functions
 from regions import generate_new_star_map, get_region_visual_config  # Import region system
+from save_manager import (save_game_to_slot, load_game_from_slot, 
+                         get_current_location_name, migrate_old_save)  # Import save system
 
 # Player stats initialized from config
 player_stats = {
@@ -33,10 +35,15 @@ current_region_id = None
 current_node_id = None
 
 def load_game():
-    try:
-        with open(config.SAVE_FILE_PATH, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
+    # Try to migrate old save file first
+    migrate_old_save()
+    
+    # Try to load from auto-save slot
+    saved_state = load_game_from_slot(config.AUTO_SAVE_SLOT)
+    
+    if saved_state:
+        return saved_state
+    else:
         return {
             "health": config.STARTING_HEALTH,
             "wealth": config.STARTING_WEALTH,
@@ -54,8 +61,12 @@ def load_game():
         }
 
 def save_game(state):
-    with open(config.SAVE_FILE_PATH, "w") as f:
-        json.dump(state, f)
+    location_name = get_current_location_name(
+        state.get("star_map"),
+        state.get("current_region_id"),
+        state.get("current_node_id")
+    )
+    save_game_to_slot(state, config.AUTO_SAVE_SLOT, location_name)
     print("Progress saved automatically.")
 
 def reset_game():

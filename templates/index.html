@@ -37,7 +37,7 @@
                 <p class="tagline">Journey through the stars</p>
                 <div class="menu-buttons">
                     <button class="menu-btn primary" onclick="if(window.gameUI) gameUI.startNewGame()">New Journey</button>
-                    <button class="menu-btn" onclick="if(window.gameUI) gameUI.loadGame()">Continue</button>
+                    <button class="menu-btn" onclick="if(window.gameUI) gameUI.showSaveLoadModal('load')">Load Game</button>
                     <button class="menu-btn" onclick="if(window.gameUI) gameUI.showSettings()">Settings</button>
                     <button class="menu-btn" onclick="if(window.gameUI) gameUI.showCredits()">Credits</button>
                 </div>
@@ -142,6 +142,22 @@
                         <button class="action-btn" onclick="if(window.gameEngine) gameEngine.showMap()">
                             <span class="btn-icon">🗺️</span>
                             <span>Star Map</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Save/Load Panel -->
+                    <div class="save-load-panel" style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                        <button class="action-btn" onclick="if(window.gameUI) gameUI.showSaveLoadModal('save')" title="Save Game (F5)">
+                            <span class="btn-icon">💾</span>
+                            <span>Save</span>
+                        </button>
+                        <button class="action-btn" onclick="if(window.gameUI) gameUI.showSaveLoadModal('load')" title="Load Game (F9)">
+                            <span class="btn-icon">📂</span>
+                            <span>Load</span>
+                        </button>
+                        <button class="action-btn" onclick="if(window.gameUI) gameUI.showScreen('mainMenu')" title="Return to Main Menu (ESC)">
+                            <span class="btn-icon">🏠</span>
+                            <span>Menu</span>
                         </button>
                     </div>
                 </div>

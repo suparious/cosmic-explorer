@@ -79,6 +79,18 @@ class ActionProcessor:
                 turn_message = session.process_turn_effects()
                 if turn_message:
                     result["event"] += f"\n{turn_message}"
+                
+                # Auto-save after turn-consuming actions
+                try:
+                    from save_manager import save_game_to_slot, get_current_location_name
+                    location_name = get_current_location_name(
+                        session.star_map,
+                        session.current_region_id,
+                        session.current_node_id
+                    )
+                    save_game_to_slot(session.to_dict(), 0, location_name)  # Slot 0 is auto-save
+                except Exception:
+                    pass  # Silently fail auto-save to not interrupt gameplay
             
         except Exception as e:
             result["event"] = f"Error processing action: {str(e)}"
