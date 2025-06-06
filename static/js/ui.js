@@ -612,23 +612,33 @@ class UIManager {
                     .save-load-content {
                         max-width: 700px;
                         width: 90%;
-                        max-height: 85vh;
+                        max-height: 80vh;
+                        height: 80vh;
                         display: flex;
                         flex-direction: column;
                         overflow: hidden;
+                    }
+                    .modal-header {
+                        padding: 1.5rem;
+                        border-bottom: 2px solid var(--glass-border);
+                        flex-shrink: 0;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
                     }
                     .save-load-tabs {
                         display: flex;
                         margin-bottom: 1.5rem;
                         border-bottom: 2px solid var(--glass-border);
                         flex-shrink: 0;
+                        padding: 0 1.5rem;
                     }
                     #save-slots-container {
                         overflow-y: auto;
                         overflow-x: hidden;
                         flex: 1;
                         min-height: 0;
-                        padding-right: 10px;
+                        padding: 0 1.5rem 1.5rem 1.5rem;
                         /* Custom scrollbar */
                         scrollbar-width: thin;
                         scrollbar-color: var(--primary-color) var(--glass-bg);
@@ -650,7 +660,6 @@ class UIManager {
                     .save-slots-grid {
                         display: grid;
                         gap: 1rem;
-                        padding-bottom: 1rem;
                     }
                     .save-slot {
                         background: var(--glass-bg);
@@ -750,9 +759,10 @@ class UIManager {
                     }
                     
                     /* Responsive design for smaller screens */
-                    @media (max-height: 600px) {
+                    @media (max-height: 700px) {
                         .save-load-content {
                             max-height: 90vh;
+                            height: 90vh;
                         }
                         .save-slot {
                             padding: 0.8rem;
@@ -763,6 +773,26 @@ class UIManager {
                         }
                         .save-load-tabs {
                             margin-bottom: 1rem;
+                        }
+                        .modal-header h3 {
+                            font-size: 1.2rem;
+                        }
+                    }
+                    
+                    @media (max-height: 500px) {
+                        .save-load-content {
+                            max-height: 95vh;
+                            height: 95vh;
+                        }
+                        .modal-header {
+                            padding: 1rem;
+                        }
+                        .save-load-tabs {
+                            margin-bottom: 0.5rem;
+                            padding: 0 1rem;
+                        }
+                        #save-slots-container {
+                            padding: 0 1rem 1rem 1rem;
                         }
                     }
                     
