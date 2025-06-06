@@ -88,7 +88,7 @@ class ActionProcessor:
                         session.current_region_id,
                         session.current_node_id
                     )
-                    save_game_to_slot(session.to_dict(), 0, location_name)  # Slot 0 is auto-save
+                    save_game_to_slot(session.to_save_dict(), 0, location_name)  # Slot 0 is auto-save
                 except Exception:
                     pass  # Silently fail auto-save to not interrupt gameplay
             

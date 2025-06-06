@@ -470,7 +470,7 @@ def save_to_slot(slot):
             )
             
             # Save to slot
-            metadata = save_game_to_slot(session.to_dict(), slot, location_name)
+            metadata = save_game_to_slot(session.to_save_dict(), slot, location_name)
             
             return jsonify({
                 "success": True,
@@ -608,7 +608,7 @@ def save_game_legacy(session_id):
             )
             
             # Save to auto-save slot
-            metadata = save_game_to_slot(session.to_dict(), config.AUTO_SAVE_SLOT, location_name)
+            metadata = save_game_to_slot(session.to_save_dict(), config.AUTO_SAVE_SLOT, location_name)
             
             return jsonify({
                 "success": True,

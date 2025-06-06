@@ -912,21 +912,30 @@ class UIManager {
         const sessionId = window.gameEngine?.sessionId || 'default';
         
         // Show confirmation if slot has existing save
-        const response = await fetch(`/api/saves/${slot}`);
-        if (response.ok) {
-            const data = await response.json();
-            if (data.success && !data.is_autosave) {
-                this.showChoiceModal(
-                    'Overwrite Save?',
-                    ['Yes, overwrite this save', 'No, cancel'],
-                    async (choice) => {
-                        if (choice === 1) {
-                            await this.performSave(slot, sessionId);
+        try {
+            const response = await fetch(`/api/saves/${slot}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && !data.is_autosave) {
+                    this.showChoiceModal(
+                        'Overwrite Save?',
+                        ['Yes, overwrite this save', 'No, cancel'],
+                        async (choice) => {
+                            if (choice === 1) {
+                                await this.performSave(slot, sessionId);
+                            }
                         }
-                    }
-                );
+                    );
+                    return;
+                }
+            } else if (response.status === 404) {
+                // Slot is empty, proceed with save
+                await this.performSave(slot, sessionId);
                 return;
             }
+        } catch (error) {
+            // Network error, try to save anyway
+            console.warn('Could not check save slot:', error);
         }
         
         await this.performSave(slot, sessionId);
