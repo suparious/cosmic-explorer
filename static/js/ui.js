@@ -29,6 +29,9 @@ class UIManager {
             this.currentModalZIndex = this.modalZIndexBase;
             this.activeModals = [];
             
+            // Game state tracking
+            this.hasActiveGame = false;
+            
             // Initialize styles after DOM is ready
             this.initStyles();
             
@@ -242,6 +245,11 @@ class UIManager {
         // Show requested screen
         this.screens[screenName].classList.add('active');
         this.currentScreen = screenName;
+        
+        // Update Continue button visibility when showing main menu
+        if (screenName === 'mainMenu') {
+            this.updateContinueButtonVisibility();
+        }
     }
     
     updateHUD(gameState) {
@@ -569,8 +577,30 @@ class UIManager {
     
     startNewGame() {
         this.showScreen('game');
+        this.hasActiveGame = true;
         if (window.gameEngine) {
             window.gameEngine.startNewGame();
+        }
+    }
+    
+    continueGame() {
+        if (this.hasActiveGame) {
+            this.showScreen('game');
+        }
+    }
+    
+    updateContinueButtonVisibility() {
+        const continueBtn = document.getElementById('continue-btn');
+        const newGameBtn = document.getElementById('new-game-btn');
+        
+        if (continueBtn && newGameBtn) {
+            if (this.hasActiveGame) {
+                continueBtn.style.display = 'block';
+                newGameBtn.classList.remove('primary');
+            } else {
+                continueBtn.style.display = 'none';
+                newGameBtn.classList.add('primary');
+            }
         }
     }
     
@@ -1054,6 +1084,9 @@ class UIManager {
                             this.showNotification(`Game loaded from slot ${slot}!`, 'success');
                             this.hideSaveLoadModal();
                             
+                            // Mark that we have an active game
+                            this.hasActiveGame = true;
+                            
                             // Update game state and ensure proper initialization
                             if (window.gameEngine) {
                                 // Update the game state
@@ -1203,6 +1236,7 @@ class UIManager {
     
     showGameOver(message) {
         this.addEventMessage(message, 'danger');
+        this.hasActiveGame = false; // No longer have an active game
         this.showChoiceModal('Game Over', ['Start New Game', 'Return to Main Menu'], (choice) => {
             if (choice === 1) {
                 this.startNewGame();
@@ -1214,6 +1248,7 @@ class UIManager {
     
     showVictory(message) {
         this.addEventMessage(message, 'success');
+        this.hasActiveGame = false; // No longer have an active game
         this.showChoiceModal('Victory!', ['Start New Game', 'Return to Main Menu'], (choice) => {
             if (choice === 1) {
                 this.startNewGame();

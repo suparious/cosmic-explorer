@@ -36,7 +36,8 @@
                 <h1 class="game-title">COSMIC EXPLORER</h1>
                 <p class="tagline">Journey through the stars</p>
                 <div class="menu-buttons">
-                    <button class="menu-btn primary" onclick="if(window.gameUI) gameUI.startNewGame()">New Journey</button>
+                    <button id="continue-btn" class="menu-btn primary" onclick="if(window.gameUI) gameUI.continueGame()" style="display: none;">Continue Journey</button>
+                    <button id="new-game-btn" class="menu-btn primary" onclick="if(window.gameUI) gameUI.startNewGame()">New Journey</button>
                     <button class="menu-btn" onclick="if(window.gameUI) gameUI.showSaveLoadModal('load')">Load Game</button>
                     <button class="menu-btn" onclick="if(window.gameUI) gameUI.showSettings()">Settings</button>
                     <button class="menu-btn" onclick="if(window.gameUI) gameUI.showCredits()">Credits</button>
