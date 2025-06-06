@@ -47,6 +47,12 @@ class SocketHandler {
         this.gameEngine.gameState = state;
         this.gameEngine.uiManager.updateHUD(state);
         
+        // Mark that we have an active game when we receive game state
+        if (state && !state.game_over) {
+            this.gameEngine.uiManager.hasActiveGame = true;
+            this.gameEngine.uiManager.updateContinueButtonVisibility();
+        }
+        
         // Dispatch custom event for other components
         document.dispatchEvent(new CustomEvent('gameStateUpdated', {
             detail: state

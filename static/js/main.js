@@ -18,6 +18,10 @@ window.addEventListener('DOMContentLoaded', async () => {
             throw new Error('UI Manager failed to initialize');
         }
         
+        // Check for existing game state to enable Continue button
+        // This will be updated when we receive the actual game state from the server
+        window.gameUI.updateContinueButtonVisibility();
+        
         // Setup keyboard shortcuts for save/load
         window.gameUI.setupKeyboardShortcuts();
         

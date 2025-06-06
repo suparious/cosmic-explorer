@@ -578,14 +578,22 @@ class UIManager {
     startNewGame() {
         this.showScreen('game');
         this.hasActiveGame = true;
+        this.updateContinueButtonVisibility();
         if (window.gameEngine) {
             window.gameEngine.startNewGame();
         }
     }
     
     continueGame() {
-        if (this.hasActiveGame) {
+        if (this.hasActiveGame && window.gameEngine && window.gameEngine.gameState) {
             this.showScreen('game');
+            // Resume music if it was playing
+            if (window.audioManager) {
+                window.audioManager.playMusic();
+            }
+        } else {
+            // No active game, show notification
+            this.showNotification('No active game found. Please start a new game or load a saved game.', 'info');
         }
     }
     
@@ -648,11 +656,11 @@ class UIManager {
                 <div class="modal-content save-load-content">
                     <div class="modal-header">
                         <h3 id="save-load-title">💾 Save Game</h3>
-                        <button class="modal-close" onclick="window.uiManager.hideSaveLoadModal()">×</button>
+                        <button class="modal-close" onclick="window.gameUI.hideSaveLoadModal()">×</button>
                     </div>
                     <div class="save-load-tabs">
-                        <button class="tab-button active" onclick="window.uiManager.switchSaveLoadMode('save')">Save Game</button>
-                        <button class="tab-button" onclick="window.uiManager.switchSaveLoadMode('load')">Load Game</button>
+                        <button class="tab-button active" onclick="window.gameUI.switchSaveLoadMode('save')">Save Game</button>
+                        <button class="tab-button" onclick="window.gameUI.switchSaveLoadMode('load')">Load Game</button>
                     </div>
                     <div id="save-slots-container">
                         <!-- Slots will be populated here -->
@@ -981,7 +989,7 @@ class UIManager {
                 </div>
                 <div class="save-slot-timestamp">${timestamp}</div>
                 ${!saveData.is_autosave && this.currentSaveLoadMode === 'save' ? 
-                    '<div class="save-slot-actions"><button class="save-action-btn delete" onclick="window.uiManager.deleteSave(' + slot + ')">Delete</button></div>' : ''}
+                    '<div class="save-slot-actions"><button class="save-action-btn delete" onclick="window.gameUI.deleteSave(' + slot + ')">Delete</button></div>' : ''}
             `;
             
             if (this.currentSaveLoadMode === 'save') {
@@ -1086,6 +1094,7 @@ class UIManager {
                             
                             // Mark that we have an active game
                             this.hasActiveGame = true;
+                            this.updateContinueButtonVisibility();
                             
                             // Update game state and ensure proper initialization
                             if (window.gameEngine) {
@@ -1135,8 +1144,8 @@ class UIManager {
                                 window.gameEngine.generateSpaceEnvironment();
                                 
                                 // Re-join the socket session with the correct ID
-                                if (window.gameEngine.socket && window.gameEngine.socket.connected) {
-                                    window.gameEngine.socket.emit('join_session', { session_id: window.gameEngine.sessionId });
+                                if (window.gameEngine.socketHandler && window.gameEngine.socketHandler.socket && window.gameEngine.socketHandler.socket.connected) {
+                                    window.gameEngine.socketHandler.socket.emit('join_session', { session_id: window.gameEngine.sessionId });
                                 }
                             } else {
                                 // Game engine not ready, reload the page to ensure proper initialization
@@ -1237,6 +1246,7 @@ class UIManager {
     showGameOver(message) {
         this.addEventMessage(message, 'danger');
         this.hasActiveGame = false; // No longer have an active game
+        this.updateContinueButtonVisibility();
         this.showChoiceModal('Game Over', ['Start New Game', 'Return to Main Menu'], (choice) => {
             if (choice === 1) {
                 this.startNewGame();
@@ -1249,6 +1259,7 @@ class UIManager {
     showVictory(message) {
         this.addEventMessage(message, 'success');
         this.hasActiveGame = false; // No longer have an active game
+        this.updateContinueButtonVisibility();
         this.showChoiceModal('Victory!', ['Start New Game', 'Return to Main Menu'], (choice) => {
             if (choice === 1) {
                 this.startNewGame();
@@ -1402,7 +1413,7 @@ class UIManager {
                     <h3>🛸 Pod Augmentations</h3>
                     <p class="modal-subtitle">Enhance your ship with pod-based technology. All augmentations are lost if pod is used!</p>
                     <div id="augmentations-list" class="augmentations-grid"></div>
-                    <button class="menu-btn" onclick="window.uiManager.hidePodModsModal()">Close</button>
+                    <button class="menu-btn" onclick="window.gameUI.hidePodModsModal()">Close</button>
                 </div>
             `;
             document.body.appendChild(modal);
@@ -1433,7 +1444,7 @@ class UIManager {
                 <div class="aug-name">${aug.name}</div>
                 <div class="aug-description">${aug.description}</div>
                 <div class="aug-cost">${isOwned ? 'Installed' : `${aug.cost} credits`}</div>
-                ${!isOwned ? `<button class="aug-buy-btn" ${!canAfford ? 'disabled' : ''} onclick="window.uiManager.buyAugmentation('${aug.id}')">Purchase</button>` : ''}
+                ${!isOwned ? `<button class="aug-buy-btn" ${!canAfford ? 'disabled' : ''} onclick="window.gameUI.buyAugmentation('${aug.id}')">Purchase</button>` : ''}
             `;
             
             augList.appendChild(augCard);
@@ -1493,7 +1504,7 @@ class UIManager {
                     <div id="food-modal-content">
                         <!-- Content will be dynamically generated -->
                     </div>
-                    <button class="menu-btn" onclick="window.uiManager.hideFoodModal()">Close</button>
+                    <button class="menu-btn" onclick="window.gameUI.hideFoodModal()">Close</button>
                 </div>
             `;
             document.body.appendChild(modal);
@@ -1629,12 +1640,12 @@ class UIManager {
                 <div class="modal-content ship-modal-content" style="max-width: 900px; width: 95%;">
                     <div class="modal-header">
                         <h3>🚀 Ship Management</h3>
-                        <button class="modal-close" onclick="window.uiManager.hideShipModal()">×</button>
+                        <button class="modal-close" onclick="window.gameUI.hideShipModal()">×</button>
                     </div>
                     <div class="ship-modal-tabs">
-                        <button class="tab-button active" onclick="window.uiManager.showShipTab('overview')">Overview</button>
-                        <button class="tab-button" onclick="window.uiManager.showShipTab('modifications')">Modifications</button>
-                        <button class="tab-button" onclick="window.uiManager.showShipTab('inventory')">Cargo Hold</button>
+                        <button class="tab-button active" onclick="window.gameUI.showShipTab('overview')">Overview</button>
+                        <button class="tab-button" onclick="window.gameUI.showShipTab('modifications')">Modifications</button>
+                        <button class="tab-button" onclick="window.gameUI.showShipTab('inventory')">Cargo Hold</button>
                     </div>
                     <div id="ship-modal-content" class="ship-modal-body">
                         <!-- Content will be dynamically generated -->
@@ -1975,7 +1986,7 @@ class UIManager {
                                 ${Object.entries(shipTypes).map(([type, ship]) => `
                                     <button class="menu-btn" 
                                         ${playerStats.wealth < ship.cost || type === playerStats.ship_type ? 'disabled' : ''}
-                                        onclick="window.uiManager.buyShip('${type}')">
+                                        onclick="window.gameUI.buyShip('${type}')">
                                         ${ship.icon} ${ship.name} (${ship.cost} credits)
                                     </button>
                                 `).join('')}
@@ -2305,7 +2316,7 @@ class UIManager {
                 <div class="modal-content star-map-content" style="max-width: 95%; width: 1200px; height: 90vh;">
                     <div class="modal-header">
                         <h3>🗺️ Star Map</h3>
-                        <button class="modal-close" onclick="window.uiManager.hideStarMap()">×</button>
+                        <button class="modal-close" onclick="window.gameUI.hideStarMap()">×</button>
                     </div>
                     <div class="star-map-body">
                         <canvas id="star-map-canvas"></canvas>
