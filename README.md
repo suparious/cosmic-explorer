@@ -1,67 +1,155 @@
-# Cosmic Explorer
+# Cosmic Explorer - Graphical Edition
 
-A sci-fi adventure game set in the vastness of space, where you explore the cosmos, manage resources, and make critical decisions to survive and thrive as a legendary explorer.
+A stunning space exploration game transformed from ASCII terminal graphics to a beautiful web-based experience!
 
-## How to Play
+## Features
 
-1. **Setup**: Ensure you have Python 3.11 installed (as specified in `.python-version`). Create a virtual environment and install dependencies from `requirements.txt`:
-   ```
-   pyenv install 3.11
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-2. **Run the Game**: Start the game by running `game.py`:
-   ```
-   python game.py
-   ```
-3. **Gameplay**: Make choices through numbered options to navigate, explore planets, undertake quests, and manage resources. Your goal is to amass wealth (reach 2000 credits for victory) while surviving challenges like ship damage, fuel depletion, and health loss.
-4. **Controls**: Input numbers (e.g., `1`, `2`) to select options presented during gameplay.
+### Visual Enhancements
 
-## User Interface (UI) Elements
+- **Dynamic Space Environment**: Animated stars, colorful nebulae, and parallax effects
+- **Smooth Ship Animations**: Real-time movement with particle thrust effects
+- **Procedurally Generated Universe**: Planets, space stations, and asteroid fields
+- **Visual Damage System**: Ship appearance changes based on condition
+- **Particle Effects**: Explosions, healing, warp drive, and more
+- **Glass-morphism UI**: Modern, translucent interface panels
 
-- **Dashboard**: Displays your current stats at the top of the terminal:
-  - **Health**: Your physical condition (green).
-  - **Wealth**: Credits for purchases and upgrades (yellow).
-  - **Ship Condition**: Current/max durability of your ship (blue).
-  - **Fuel**: Remaining fuel with a visual gauge (red).
-  - **Food Supplies**: Resources to recover health (green).
-  - **Active Quest**: Current mission if accepted (magenta).
-  - **Turn**: Current turn out of maximum allowed (cyan).
-- **ASCII Art**:
-  - **Ship Avatar**: Visual representation of your ship’s condition (right side, blue). Shows damage with `*` symbols and a "[Pod]" label if you own a flight pod.
-  - **Player Avatar**: Represents your health (right side, green), with `*` for injuries, and shows wealth as credits.
-- **Event Text**: Narrative updates and choices appear below the dashboard (white text).
+### Audio System
 
-## Current Features
+- Dynamic sound effects for all actions
+- Atmospheric space ambience music
+- Procedural audio for special effects
+- Volume controls for music, SFX, and master
 
-- **Core Gameplay Loop**: Navigate space, encounter random events, accept quests, and make choices that impact your stats.
-- **Resource Management**: Track health, wealth, ship condition, fuel, and food supplies. Use food to recover health when low.
-- **Wealth System**: Earn wealth through events and quests. Spend it on:
-  - **Ship Upgrades** (300 wealth): Increase maximum ship condition permanently.
-  - **Ship Repairs** (100 wealth): Restore ship condition to maximum, available only at planets/outposts.
-  - **Flight Pod** (500 wealth): A one-time purchase for a lifeline if your ship is destroyed.
-- **Flight Pod Mechanic**: If your ship is destroyed, use the pod to attempt a risky journey to an outpost (20% chance of health loss). At the outpost, buy a new ship (400 wealth) to continue.
-- **Visual UI**: Terminal-based UI with colors, animations, and ASCII art for immersion using the `blessed` library.
-- **Save/Load System**: Progress is automatically saved after each action to `save_game.json` and loaded on startup.
-- **New Game Option**: Restart with fresh stats after game over or victory.
+### Gameplay Features
 
-## What We Need to Do Next
+- Real-time WebSocket updates
+- Smooth 60fps rendering
+- Keyboard shortcuts for quick actions
+- Visual quest indicators
+- Critical stat warnings
+- Choice modals for decisions
+- Event log with timestamps
 
-- **Enhanced Quest System**: Add multi-stage quests with deeper narratives and varied rewards.
-- **Flight Pod Expansion**: Implement proactive use of the flight pod for travel to outposts even when the ship isn’t destroyed, adding strategic exploration options.
-- **Ship Variety**: Introduce different ship types with unique stats or abilities when purchasing a new ship at outposts.
-- **Docker Compose Environment**: Set up a development and deployment environment with three components:
-  - **Game Engine**: The current text-based game logic.
-  - **Data Service(s)**: Backend for storing game state, leaderboards, or shared data.
-  - **UI**: A graphical or web-based interface using WebSocket communication for real-time updates.
-- **Balancing**: Fine-tune event frequencies, costs, and resource depletion rates for optimal difficulty.
-- **Additional Visuals**: Expand ASCII art or UI elements for events, planets, and outposts to enhance immersion.
+## Running the Game
 
-## Contributing
+### Prerequisites
 
-This game is under active development. Feedback and ideas are welcome! Please test the game, report bugs, or suggest features by contacting the developer.
+- Python 3.8+
+- Modern web browser (Chrome, Firefox, Safari, Edge)
+
+### Installation
+
+1. Clone the repository:
+
+```bash
+cd /home/shaun/repos/cosmic-explorer
+```
+
+2. Create a virtual environment:
+
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+### Starting the Game
+
+1. Run the Flask server:
+
+```bash
+python api/app.py
+```
+
+2. Open your browser and navigate to:
+
+```
+http://localhost:5000
+```
+
+3. Enjoy the game!
+
+## Controls
+
+### Mouse
+
+- Click buttons to perform actions
+- Navigate menus
+
+### Keyboard (In-Game)
+
+- `1` - Navigate to new location
+- `2` - Scan area
+- `3` - Repair ship (when at station)
+- `4` - Open inventory
+- `5` - View quests
+- `6` - Open star map
+- `ESC` - Return to main menu
+
+## Architecture
+
+### Backend (Python/Flask)
+
+- `api/app.py` - Flask server with REST API and WebSocket support
+- Original game logic preserved in Python files
+- Real-time game state synchronization
+
+### Frontend (HTML5/Canvas)
+
+- `static/js/renderer.js` - Canvas rendering engine
+- `static/js/particles.js` - Particle effects system
+- `static/js/audio.js` - Sound management
+- `static/js/ui.js` - UI components and HUD
+- `static/js/game.js` - Main game engine
+
+### Visual Design
+
+- Dark space theme with neon accents
+- Glassmorphism UI elements
+- Smooth animations and transitions
+- Responsive design for all screen sizes
+
+## Development
+
+### Adding New Features
+
+1. **New Visual Effects**: Add to `particles.js`
+2. **New Sound Effects**: Add to `audio.js`
+3. **New UI Elements**: Modify `ui.js` and `game.css`
+4. **New Game Actions**: Update `api/app.py` and `game.js`
+
+### Customization
+
+- Modify `static/js/config.js` for game settings
+- Edit `static/css/game.css` for visual styling
+- Update color schemes in CSS variables
+
+## Credits
+
+- Original ASCII version created with x.ai Grok-3
+- Graphical transformation by Claude Opus 4
+- Built with Flask, Socket.IO, and HTML5 Canvas
+
+## Future Enhancements
+
+- [ ] Sprite-based graphics (PNG assets)
+- [ ] Save/Load game functionality
+- [ ] Interactive star map
+- [ ] Ship customization UI
+- [ ] Multiplayer support
+- [ ] Mobile touch controls
+- [ ] Achievement system
+- [ ] Leaderboards
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is open source and available under the MIT License.
+
+---
+
+Enjoy exploring the cosmos in stunning visual detail! 🚀✨
