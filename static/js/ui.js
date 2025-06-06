@@ -24,6 +24,11 @@ class UIManager {
             this.eventLog = [];
             this.maxEventLogSize = 5;
             
+            // Modal z-index management
+            this.modalZIndexBase = 1000;
+            this.currentModalZIndex = this.modalZIndexBase;
+            this.activeModals = [];
+            
             // Initialize styles after DOM is ready
             this.initStyles();
             
@@ -502,6 +507,15 @@ class UIManager {
             choiceList.appendChild(btn);
         });
         
+        // Ensure this modal appears on top of all other modals
+        this.currentModalZIndex += 10;
+        modal.style.zIndex = this.currentModalZIndex;
+        
+        // Track this modal
+        if (!this.activeModals.includes(modal)) {
+            this.activeModals.push(modal);
+        }
+        
         // Show modal with proper display
         modal.style.display = 'flex';
         modal.style.justifyContent = 'center';
@@ -513,9 +527,19 @@ class UIManager {
         const modal = document.getElementById('choice-modal');
         if (!modal) return;
         
+        // Remove from active modals
+        const index = this.activeModals.indexOf(modal);
+        if (index > -1) {
+            this.activeModals.splice(index, 1);
+        }
+        
         modal.style.animation = 'fade-out 0.3s ease-out';
         setTimeout(() => {
             modal.style.display = 'none';
+            // Reset z-index if no other modals are active
+            if (this.activeModals.length === 0) {
+                this.currentModalZIndex = this.modalZIndexBase;
+            }
         }, 300);
     }
     
@@ -830,11 +854,21 @@ class UIManager {
     hideSaveLoadModal() {
         const modal = document.getElementById('save-load-modal');
         if (modal) {
+            // Remove from active modals
+            const index = this.activeModals.indexOf(modal);
+            if (index > -1) {
+                this.activeModals.splice(index, 1);
+            }
+            
             modal.style.animation = 'fade-out 0.3s ease-out';
             setTimeout(() => {
                 modal.style.display = 'none';
                 // Remove modal from DOM to prevent duplicates
                 modal.remove();
+                // Reset z-index if no other modals are active
+                if (this.activeModals.length === 0) {
+                    this.currentModalZIndex = this.modalZIndexBase;
+                }
             }, 300);
         }
     }
@@ -1370,13 +1404,31 @@ class UIManager {
             augList.appendChild(augCard);
         });
         
+        // Set z-index and track this modal
+        this.currentModalZIndex += 10;
+        modal.style.zIndex = this.currentModalZIndex;
+        
+        if (!this.activeModals.includes(modal)) {
+            this.activeModals.push(modal);
+        }
+        
         modal.style.display = 'flex';
     }
     
     hidePodModsModal() {
         const modal = document.getElementById('pod-mods-modal');
         if (modal) {
+            // Remove from active modals
+            const index = this.activeModals.indexOf(modal);
+            if (index > -1) {
+                this.activeModals.splice(index, 1);
+            }
+            
             modal.style.display = 'none';
+            // Reset z-index if no other modals are active
+            if (this.activeModals.length === 0) {
+                this.currentModalZIndex = this.modalZIndexBase;
+            }
         }
     }
     
@@ -1447,6 +1499,14 @@ class UIManager {
             </div>
         `;
         
+        // Set z-index and track this modal
+        this.currentModalZIndex += 10;
+        modal.style.zIndex = this.currentModalZIndex;
+        
+        if (!this.activeModals.includes(modal)) {
+            this.activeModals.push(modal);
+        }
+        
         modal.style.display = 'flex';
         
         // Add hover effect to food resource when modal is open
@@ -1487,7 +1547,17 @@ class UIManager {
     hideFoodModal() {
         const modal = document.getElementById('food-modal');
         if (modal) {
+            // Remove from active modals
+            const index = this.activeModals.indexOf(modal);
+            if (index > -1) {
+                this.activeModals.splice(index, 1);
+            }
+            
             modal.style.display = 'none';
+            // Reset z-index if no other modals are active
+            if (this.activeModals.length === 0) {
+                this.currentModalZIndex = this.modalZIndexBase;
+            }
         }
         
         // Remove hover effect from food resource
@@ -1797,6 +1867,14 @@ class UIManager {
         // Show overview tab by default
         this.showShipTab('overview');
         
+        // Set z-index and track this modal
+        this.currentModalZIndex += 10;
+        modal.style.zIndex = this.currentModalZIndex;
+        
+        if (!this.activeModals.includes(modal)) {
+            this.activeModals.push(modal);
+        }
+        
         modal.style.display = 'flex';
         modal.style.animation = 'fade-in 0.3s ease-out';
     }
@@ -1804,9 +1882,19 @@ class UIManager {
     hideShipModal() {
         const modal = document.getElementById('ship-modal');
         if (modal) {
+            // Remove from active modals
+            const index = this.activeModals.indexOf(modal);
+            if (index > -1) {
+                this.activeModals.splice(index, 1);
+            }
+            
             modal.style.animation = 'fade-out 0.3s ease-out';
             setTimeout(() => {
                 modal.style.display = 'none';
+                // Reset z-index if no other modals are active
+                if (this.activeModals.length === 0) {
+                    this.currentModalZIndex = this.modalZIndexBase;
+                }
             }, 300);
         }
     }
@@ -2272,6 +2360,14 @@ class UIManager {
             }
         }
         
+        // Set z-index and track this modal
+        this.currentModalZIndex += 10;
+        modal.style.zIndex = this.currentModalZIndex;
+        
+        if (!this.activeModals.includes(modal)) {
+            this.activeModals.push(modal);
+        }
+        
         // Render star map
         modal.style.display = 'flex';
         
@@ -2443,7 +2539,17 @@ class UIManager {
     hideStarMap() {
         const modal = document.getElementById('star-map-modal');
         if (modal) {
+            // Remove from active modals
+            const index = this.activeModals.indexOf(modal);
+            if (index > -1) {
+                this.activeModals.splice(index, 1);
+            }
+            
             modal.style.display = 'none';
+            // Reset z-index if no other modals are active
+            if (this.activeModals.length === 0) {
+                this.currentModalZIndex = this.modalZIndexBase;
+            }
         }
     }
 }

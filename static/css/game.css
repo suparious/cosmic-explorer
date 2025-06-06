@@ -478,13 +478,7 @@ body {
     z-index: 1000;
 }
 
-/* Ensure modals stack properly */
-#choice-modal { z-index: 1001; }
-#save-load-modal { z-index: 1002; }
-#pod-mods-modal { z-index: 1003; }
-#food-modal { z-index: 1004; }
-#ship-modal { z-index: 1005; }
-#star-map-modal { z-index: 1006; }
+/* Modals now use dynamic z-index management - removed static z-index values */
 
 /* Notification should always be on top */
 .notification {
