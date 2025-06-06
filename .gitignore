@@ -1,8 +1,24 @@
-## Save games
-save_game.json
-save_game-*.json
+# OS files
+.DS_Store
+Thumbs.db
 
-## Python
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -10,9 +26,13 @@ __pycache__/
 *.pyw
 *.pyz
 
-## Environment variables
+# Environment variables
 .env
 
-## virtual environment
+# virtual environment
 venv/
 .venv/
+
+# Save games
+save_game.json
+save_game-*.json

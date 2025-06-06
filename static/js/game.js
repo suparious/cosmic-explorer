@@ -44,6 +44,10 @@ class GameEngine {
             window.uiManager = this.uiManager; // Set global instance for onclick handlers
             console.log('UIManager created:', this.uiManager);
             
+            console.log('Creating CombatUI...');
+            this.combatUI = new CombatUI(this.uiManager);
+            window.combatUI = this.combatUI;
+            
             // Initialize audio visualizer
             this.uiManager.initAudioVisualizer();
             
@@ -69,6 +73,11 @@ class GameEngine {
         this.socket.on('game_state', (state) => {
             this.gameState = state;
             this.uiManager.updateHUD(state);
+            
+            // Dispatch custom event for other components
+            document.dispatchEvent(new CustomEvent('gameStateUpdated', {
+                detail: state
+            }));
             
             // Update music based on game state
             if (this.audioManager) {
@@ -148,10 +157,41 @@ class GameEngine {
                     this.uiManager.showAugmentationsModal();
                 }
                 break;
+            case 'combat_start':
+                this.audioManager.playAlertSound();
+                // Store combat state in the event or get from result
+                const combatState = event.combat_state || (event.result && event.result.combat_state);
+                if (combatState && this.combatUI) {
+                    this.combatUI.showCombat(combatState, event.choices || ['Attack', 'Flee', 'Negotiate']);
+                }
+                break;
+            case 'combat':
+                const ongoingCombatState = event.combat_state || (event.result && event.result.combat_state);
+                if (ongoingCombatState && this.combatUI) {
+                    this.combatUI.updateCombatDisplay(ongoingCombatState);
+                    this.combatUI.updateCombatActions(event.choices || ['Attack', 'Flee', 'Negotiate']);
+                    // Add log entries for combat messages
+                    if (event.message) {
+                        const messages = event.message.split('\n').filter(m => m.trim());
+                        messages.forEach(msg => {
+                            const type = msg.includes('damage') || msg.includes('Hit') ? 'damage' : 
+                                       msg.includes('Missed') || msg.includes('evade') ? 'normal' : 'success';
+                            this.combatUI.addLogEntry(msg, type);
+                        });
+                    }
+                }
+                break;
+            case 'combat_end':
+                if (event.rewards && this.combatUI) {
+                    this.combatUI.showCombatRewards(event.rewards);
+                } else if (this.combatUI) {
+                    this.combatUI.hideCombat();
+                }
+                break;
         }
         
-        // Show choices if available
-        if (event.choices && event.choices.length > 0) {
+        // Show choices if available (except for combat which uses its own UI)
+        if (event.choices && event.choices.length > 0 && event.type !== 'combat_start' && event.type !== 'combat') {
             this.uiManager.showChoiceModal(event.message, event.choices, (choice) => {
                 this.sendAction('choice', { choice });
             });
@@ -171,6 +211,11 @@ class GameEngine {
             if (result.game_state) {
                 this.gameState = result.game_state;
                 this.saveGameState();
+                
+                // Dispatch custom event for state changes
+                document.dispatchEvent(new CustomEvent('gameStateUpdated', {
+                    detail: this.gameState
+                }));
             }
         } else {
             this.uiManager.showNotification('Action failed', 'danger');
@@ -351,6 +396,31 @@ class GameEngine {
             });
         } else {
             this.uiManager.showNotification('Star map unavailable!', 'error');
+        }
+    }
+    
+    mine() {
+        this.sendAction('mine');
+        // Play mining sound effect
+        this.audioManager.playSound('scan'); // Using scan sound for now
+        // Add visual effect
+        const ship = this.renderer.ship;
+        if (ship) {
+            // Create mining beam effect
+            for (let i = 0; i < 20; i++) {
+                const angle = (Math.PI * 2 * i) / 20;
+                const particle = {
+                    x: ship.x + Math.cos(angle) * 50,
+                    y: ship.y + Math.sin(angle) * 50,
+                    vx: Math.cos(angle) * 2,
+                    vy: Math.sin(angle) * 2,
+                    life: 30,
+                    maxLife: 30,
+                    size: 2,
+                    color: '255, 200, 0'
+                };
+                this.renderer.particles.push(particle);
+            }
         }
     }
     

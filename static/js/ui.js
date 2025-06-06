@@ -241,6 +241,9 @@ class UIManager {
         
         const stats = gameState.player_stats;
         
+        // Update mine button visibility
+        this.updateMineButton(gameState);
+        
         // Update health
         const healthValue = document.getElementById('health-value');
         if (healthValue) healthValue.textContent = stats.health;
@@ -1492,6 +1495,48 @@ class UIManager {
         }
         
         requestAnimationFrame(() => this.renderAudioVisualization());
+    }
+    
+    updateMineButton(gameState) {
+        let mineBtn = document.getElementById('mine-btn');
+        const location = gameState.current_location;
+        const hasMiningLaser = Object.values(gameState.player_stats.ship_mods).some(mods => mods.includes('mining_laser'));
+        const isAsteroidField = location && location.node && location.node.type === 'asteroid_field';
+        
+        if (isAsteroidField && !gameState.player_stats.in_pod_mode) {
+            if (!mineBtn) {
+                // Create mine button if it doesn't exist
+                mineBtn = document.createElement('button');
+                mineBtn.id = 'mine-btn';
+                mineBtn.className = 'action-btn';
+                mineBtn.innerHTML = '<span class="btn-icon">⛏️</span><span>Mine</span>';
+                
+                // Insert after scan button
+                const scanBtn = document.querySelector('button[onclick*="scanArea"]');
+                if (scanBtn && scanBtn.parentNode) {
+                    scanBtn.parentNode.insertBefore(mineBtn, scanBtn.nextSibling);
+                }
+            }
+            
+            mineBtn.style.display = 'flex';
+            
+            if (hasMiningLaser) {
+                mineBtn.disabled = false;
+                mineBtn.classList.add('available');
+                mineBtn.onclick = () => {
+                    if (window.gameEngine) window.gameEngine.mine();
+                };
+            } else {
+                mineBtn.disabled = true;
+                mineBtn.classList.remove('available');
+                mineBtn.title = 'Requires Mining Laser';
+                mineBtn.onclick = () => {
+                    this.showNotification('You need a Mining Laser to mine asteroids!', 'warning');
+                };
+            }
+        } else if (mineBtn) {
+            mineBtn.style.display = 'none';
+        }
     }
     
     showItemOptions(itemId) {
