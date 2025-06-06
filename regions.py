@@ -13,6 +13,18 @@ class NodeType:
     WORMHOLE = "wormhole"
     ASTEROID_FIELD = "asteroid_field"
     DERELICT = "derelict"
+    
+    @classmethod
+    def get_all_types(cls):
+        """Return a list of all valid node types"""
+        return [
+            cls.PLANET,
+            cls.STATION,
+            cls.ANOMALY,
+            cls.WORMHOLE,
+            cls.ASTEROID_FIELD,
+            cls.DERELICT
+        ]
 
 class RegionType:
     CORE_WORLDS = "core_worlds"
@@ -295,7 +307,7 @@ class StarMapGenerator:
         
         # Add additional random node types
         while len(node_types) < num_nodes:
-            node_types.append(random.choice(list(NodeType.__dict__.values())))
+            node_types.append(random.choice(NodeType.get_all_types()))
         
         # Position nodes in a scattered pattern within the region
         for i in range(num_nodes):
@@ -305,7 +317,7 @@ class StarMapGenerator:
             y = math.sin(angle) * distance
             
             node_id = f"NODE_{region.id}_{i:03d}"
-            node_type = node_types[i] if i < len(node_types) else random.choice(list(NodeType.__dict__.values()))
+            node_type = node_types[i] if i < len(node_types) else random.choice(NodeType.get_all_types())
             
             node = Node(node_id, node_type, region.id, (x, y))
             nodes.append(node)

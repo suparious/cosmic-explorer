@@ -643,14 +643,76 @@ def favicon():
 @app.route('/api/game/new', methods=['POST'])
 def new_game():
     """Start a new game session"""
+    try:
+        data = request.json
+        session_id = data.get('session_id', 'default')
+        force_new = data.get('force_new', False)
+        
+        with game_lock:
+            # Always create new session if force_new is True (for "New Journey")
+            if force_new or session_id not in game_sessions:
+                game_sessions[session_id] = GameSession(session_id)
+            session = game_sessions[session_id]
+        
+        # Emit initial game state via WebSocket
+        socketio.emit('game_state', session.to_dict(), room=session_id)
+        
+        return jsonify({
+            "success": True,
+            "session_id": session_id,
+            "game_state": session.to_dict()
+        })
+    except Exception as e:
+        print(f"Error creating new game: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Failed to create new game session",
+            "details": str(e)
+        }), 500
+
+@app.route('/api/game/load', methods=['POST'])
+def load_game():
+    """Load a saved game session"""
     data = request.json
     session_id = data.get('session_id', 'default')
+    saved_state = data.get('saved_state', {})
     
     with game_lock:
-        game_sessions[session_id] = GameSession(session_id)
-        session = game_sessions[session_id]
+        # Create new session and restore saved state
+        session = GameSession(session_id)
+        
+        # Restore saved data
+        if saved_state:
+            # Restore star map
+            if 'star_map' in saved_state:
+                session.star_map = saved_state['star_map']
+            if 'current_region_id' in saved_state:
+                session.current_region_id = saved_state['current_region_id']
+            if 'current_node_id' in saved_state:
+                session.current_node_id = saved_state['current_node_id']
+            
+            # Restore player stats
+            if 'player_stats' in saved_state:
+                session.player_stats.update(saved_state['player_stats'])
+            
+            # Restore game progress
+            if 'turn_count' in saved_state:
+                session.turn_count = saved_state['turn_count']
+            if 'active_quest' in saved_state:
+                session.active_quest = saved_state['active_quest']
+            
+            # Update location status
+            if session.star_map and session.current_node_id:
+                current_region = session.star_map['regions'].get(session.current_region_id)
+                if current_region:
+                    for node in current_region['nodes']:
+                        if node['id'] == session.current_node_id:
+                            session.at_repair_location = node.get('has_repair', False)
+                            break
+        
+        game_sessions[session_id] = session
     
-    # Emit initial game state via WebSocket
+    # Emit loaded game state via WebSocket
     socketio.emit('game_state', session.to_dict(), room=session_id)
     
     return jsonify({

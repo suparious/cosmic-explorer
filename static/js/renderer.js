@@ -154,6 +154,7 @@ class Renderer {
         this.renderPlanets();
         this.renderStations();
         this.renderAsteroids();
+        this.renderRegionEffects();
         this.renderShip();
         this.renderParticles();
         
@@ -162,6 +163,7 @@ class Renderer {
         
         // Render UI elements (not affected by camera)
         this.renderScanEffect();
+        this.renderScreenFlash();
         this.renderDamageOverlay(gameState);
     }
     
@@ -619,6 +621,89 @@ class Renderer {
         }
     }
     
+    renderRegionEffects() {
+        // Render trade ships
+        if (this.tradeShips) {
+            this.tradeShips.forEach(ship => {
+                // Draw trail
+                this.ctx.strokeStyle = 'rgba(100, 200, 255, 0.3)';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                ship.trail.forEach((point, i) => {
+                    if (i === 0) {
+                        this.ctx.moveTo(point.x, point.y);
+                    } else {
+                        this.ctx.lineTo(point.x, point.y);
+                    }
+                });
+                this.ctx.stroke();
+                
+                // Draw ship
+                this.ctx.save();
+                this.ctx.translate(ship.x, ship.y);
+                const angle = Math.atan2(ship.targetY - ship.y, ship.targetX - ship.x);
+                this.ctx.rotate(angle);
+                
+                this.ctx.fillStyle = ship.color;
+                this.ctx.beginPath();
+                this.ctx.moveTo(10, 0);
+                this.ctx.lineTo(-8, -6);
+                this.ctx.lineTo(-5, 0);
+                this.ctx.lineTo(-8, 6);
+                this.ctx.closePath();
+                this.ctx.fill();
+                
+                this.ctx.restore();
+            });
+        }
+        
+        // Render floating asteroids
+        if (this.floatingAsteroids) {
+            this.floatingAsteroids.forEach(asteroid => {
+                // Update position
+                asteroid.x += asteroid.vx;
+                asteroid.y += asteroid.vy;
+                asteroid.rotation += asteroid.rotationSpeed;
+                
+                this.ctx.save();
+                this.ctx.translate(asteroid.x, asteroid.y);
+                this.ctx.rotate(asteroid.rotation);
+                
+                // Draw asteroid
+                this.ctx.fillStyle = '#8B7355';
+                this.ctx.strokeStyle = '#654321';
+                this.ctx.lineWidth = 2;
+                
+                this.ctx.beginPath();
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    const radius = asteroid.size * (0.8 + Math.sin(i * 1.7) * 0.2);
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
+                    
+                    if (i === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                }
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                this.ctx.restore();
+            });
+        }
+    }
+    
+    renderScreenFlash() {
+        if (this.screenFlash && this.screenFlash.duration > 0) {
+            this.ctx.fillStyle = this.screenFlash.color;
+            this.ctx.fillRect(0, 0, this.width, this.height);
+            this.screenFlash.duration--;
+        }
+    }
+    
     // Effects methods
     startScanEffect() {
         this.scanEffect = {
@@ -745,18 +830,393 @@ class Renderer {
                 secondaryColor: config.background.secondary_color || '#87CEEB',
                 starDensity: config.background.star_density || 1.0,
                 nebulaOpacity: config.background.nebula_opacity || 0.5,
-                ambientBrightness: config.background.ambient_brightness || 0.5
+                ambientBrightness: config.background.ambient_brightness || 0.5,
+                particleEffects: config.background.particle_effects || []
             };
             
             // Regenerate background elements with new theme
             this.generateStars();
             this.generateNebulae();
             
+            // Start region-specific particle effects
+            this.startRegionParticleEffects();
+            
             // Trigger music change
             if (window.audioManager && config.music_theme) {
                 window.audioManager.changeRegionMusic(config.music_theme);
             }
+            
+            // Show region transition notification
+            if (window.uiManager) {
+                window.uiManager.showNotification(`Entering ${region.name}`, 'info', 3000);
+            }
         }
+    }
+    
+    startRegionParticleEffects() {
+        // Clear any existing region particle emitters
+        if (this.regionParticleEmitters) {
+            this.regionParticleEmitters.forEach(emitter => clearInterval(emitter));
+        }
+        this.regionParticleEmitters = [];
+        
+        // Create particle effects based on region type
+        const effects = this.regionTheme.particleEffects;
+        
+        effects.forEach(effect => {
+            switch(effect) {
+                case 'trade_ships':
+                    // Occasional trading ships passing by
+                    const tradeEmitter = setInterval(() => {
+                        if (Math.random() < 0.3) {
+                            const startX = Math.random() < 0.5 ? -100 : this.width + 100;
+                            const startY = Math.random() * this.height;
+                            const targetX = startX < 0 ? this.width + 100 : -100;
+                            const targetY = Math.random() * this.height;
+                            
+                            this.createTradeShipEffect(startX, startY, targetX, targetY);
+                        }
+                    }, 3000);
+                    this.regionParticleEmitters.push(tradeEmitter);
+                    break;
+                    
+                case 'station_lights':
+                    // Blinking station lights
+                    const lightEmitter = setInterval(() => {
+                        const x = Math.random() * this.width;
+                        const y = Math.random() * this.height;
+                        this.createStationLightEffect(x, y);
+                    }, 2000);
+                    this.regionParticleEmitters.push(lightEmitter);
+                    break;
+                    
+                case 'asteroids':
+                    // Floating asteroids
+                    const asteroidEmitter = setInterval(() => {
+                        this.createAsteroidEffect();
+                    }, 4000);
+                    this.regionParticleEmitters.push(asteroidEmitter);
+                    break;
+                    
+                case 'debris':
+                    // Space debris
+                    const debrisEmitter = setInterval(() => {
+                        this.createDebrisEffect();
+                    }, 1500);
+                    this.regionParticleEmitters.push(debrisEmitter);
+                    break;
+                    
+                case 'nebula_wisps':
+                    // Nebula energy wisps
+                    const wispEmitter = setInterval(() => {
+                        this.createNebulaWispEffect();
+                    }, 2000);
+                    this.regionParticleEmitters.push(wispEmitter);
+                    break;
+                    
+                case 'energy_storms':
+                    // Energy storm flashes
+                    const stormEmitter = setInterval(() => {
+                        if (Math.random() < 0.2) {
+                            this.createEnergyStormEffect();
+                        }
+                    }, 5000);
+                    this.regionParticleEmitters.push(stormEmitter);
+                    break;
+                    
+                case 'void_whispers':
+                    // Mysterious void particles
+                    const voidEmitter = setInterval(() => {
+                        this.createVoidWhisperEffect();
+                    }, 3000);
+                    this.regionParticleEmitters.push(voidEmitter);
+                    break;
+                    
+                case 'ancient_artifacts':
+                    // Glowing ancient artifacts
+                    const artifactEmitter = setInterval(() => {
+                        this.createAncientArtifactEffect();
+                    }, 6000);
+                    this.regionParticleEmitters.push(artifactEmitter);
+                    break;
+                    
+                case 'energy_fields':
+                    // Energy field pulses
+                    const fieldEmitter = setInterval(() => {
+                        this.createEnergyFieldEffect();
+                    }, 4000);
+                    this.regionParticleEmitters.push(fieldEmitter);
+                    break;
+            }
+        });
+    }
+    
+    createTradeShipEffect(startX, startY, targetX, targetY) {
+        const ship = {
+            x: startX,
+            y: startY,
+            targetX: targetX,
+            targetY: targetY,
+            speed: 2,
+            size: 15,
+            trail: [],
+            color: 'rgba(100, 200, 255, 0.8)'
+        };
+        
+        const moveShip = () => {
+            const dx = ship.targetX - ship.x;
+            const dy = ship.targetY - ship.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 5) {
+                ship.x += (dx / distance) * ship.speed;
+                ship.y += (dy / distance) * ship.speed;
+                
+                // Add to trail
+                ship.trail.push({ x: ship.x, y: ship.y });
+                if (ship.trail.length > 20) ship.trail.shift();
+                
+                // Create engine particles
+                this.particles.push({
+                    x: ship.x - (dx / distance) * 10,
+                    y: ship.y - (dy / distance) * 10,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    life: 20,
+                    maxLife: 20,
+                    size: 2,
+                    color: '100, 200, 255'
+                });
+                
+                requestAnimationFrame(moveShip);
+            }
+        };
+        
+        // Add ship to temporary render list
+        if (!this.tradeShips) this.tradeShips = [];
+        this.tradeShips.push(ship);
+        moveShip();
+        
+        // Remove after reaching destination
+        setTimeout(() => {
+            const index = this.tradeShips.indexOf(ship);
+            if (index > -1) this.tradeShips.splice(index, 1);
+        }, 30000);
+    }
+    
+    createStationLightEffect(x, y) {
+        // Blinking light effect
+        for (let i = 0; i < 3; i++) {
+            setTimeout(() => {
+                this.particles.push({
+                    x: x,
+                    y: y,
+                    vx: 0,
+                    vy: 0,
+                    life: 10,
+                    maxLife: 10,
+                    size: 5 + Math.random() * 5,
+                    color: '255, 255, 100'
+                });
+            }, i * 200);
+        }
+    }
+    
+    createAsteroidEffect() {
+        const asteroid = {
+            x: -50,
+            y: Math.random() * this.height,
+            vx: 0.5 + Math.random() * 0.5,
+            vy: (Math.random() - 0.5) * 0.2,
+            rotation: 0,
+            rotationSpeed: (Math.random() - 0.5) * 0.02,
+            size: 20 + Math.random() * 30,
+            life: 1000
+        };
+        
+        if (!this.floatingAsteroids) this.floatingAsteroids = [];
+        this.floatingAsteroids.push(asteroid);
+        
+        // Remove after time
+        setTimeout(() => {
+            const index = this.floatingAsteroids.indexOf(asteroid);
+            if (index > -1) this.floatingAsteroids.splice(index, 1);
+        }, 20000);
+    }
+    
+    createDebrisEffect() {
+        for (let i = 0; i < 3; i++) {
+            this.particles.push({
+                x: -20,
+                y: Math.random() * this.height,
+                vx: 1 + Math.random() * 2,
+                vy: (Math.random() - 0.5) * 0.5,
+                life: 200,
+                maxLife: 200,
+                size: 1 + Math.random() * 2,
+                color: '150, 150, 150'
+            });
+        }
+    }
+    
+    createNebulaWispEffect() {
+        const wisp = {
+            x: Math.random() * this.width,
+            y: Math.random() * this.height,
+            phase: 0,
+            radius: 50 + Math.random() * 50,
+            speed: 0.01 + Math.random() * 0.02
+        };
+        
+        const animateWisp = () => {
+            wisp.phase += wisp.speed;
+            
+            // Create glowing particles in a spiral
+            for (let i = 0; i < 3; i++) {
+                const angle = wisp.phase + (i * Math.PI * 2 / 3);
+                const r = wisp.radius * (0.5 + 0.5 * Math.sin(wisp.phase * 2));
+                
+                this.particles.push({
+                    x: wisp.x + Math.cos(angle) * r,
+                    y: wisp.y + Math.sin(angle) * r,
+                    vx: 0,
+                    vy: -0.5,
+                    life: 30,
+                    maxLife: 30,
+                    size: 3,
+                    color: '200, 100, 255'
+                });
+            }
+            
+            if (wisp.phase < Math.PI * 4) {
+                requestAnimationFrame(animateWisp);
+            }
+        };
+        
+        animateWisp();
+    }
+    
+    createEnergyStormEffect() {
+        // Lightning-like effect
+        const startX = Math.random() * this.width;
+        const startY = 0;
+        const endX = startX + (Math.random() - 0.5) * 200;
+        const endY = this.height;
+        
+        // Create lightning path
+        const segments = 20;
+        for (let i = 0; i < segments; i++) {
+            const t = i / segments;
+            const x = startX + (endX - startX) * t + (Math.random() - 0.5) * 50;
+            const y = startY + (endY - startY) * t;
+            
+            this.particles.push({
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 5,
+                vy: (Math.random() - 0.5) * 5,
+                life: 20,
+                maxLife: 20,
+                size: 5 + Math.random() * 5,
+                color: '255, 100, 255'
+            });
+        }
+        
+        // Flash effect
+        this.screenFlash = {
+            intensity: 0.3,
+            color: 'rgba(255, 100, 255, 0.3)',
+            duration: 10
+        };
+    }
+    
+    createVoidWhisperEffect() {
+        // Dark, mysterious particles
+        const centerX = Math.random() * this.width;
+        const centerY = Math.random() * this.height;
+        
+        for (let i = 0; i < 20; i++) {
+            const angle = (i / 20) * Math.PI * 2;
+            const radius = 30 + Math.random() * 20;
+            
+            this.particles.push({
+                x: centerX + Math.cos(angle) * radius,
+                y: centerY + Math.sin(angle) * radius,
+                vx: -Math.cos(angle) * 0.5,
+                vy: -Math.sin(angle) * 0.5,
+                life: 60,
+                maxLife: 60,
+                size: 2,
+                color: '50, 0, 100'
+            });
+        }
+    }
+    
+    createAncientArtifactEffect() {
+        // Glowing artifact
+        const artifact = {
+            x: Math.random() * this.width,
+            y: Math.random() * this.height,
+            glowPhase: 0,
+            size: 20
+        };
+        
+        const glowArtifact = () => {
+            artifact.glowPhase += 0.05;
+            const glowSize = artifact.size + Math.sin(artifact.glowPhase) * 10;
+            
+            // Create glow particles
+            this.particles.push({
+                x: artifact.x,
+                y: artifact.y,
+                vx: 0,
+                vy: 0,
+                life: 10,
+                maxLife: 10,
+                size: glowSize,
+                color: '255, 215, 0'
+            });
+            
+            if (artifact.glowPhase < Math.PI * 4) {
+                requestAnimationFrame(glowArtifact);
+            }
+        };
+        
+        glowArtifact();
+    }
+    
+    createEnergyFieldEffect() {
+        // Expanding energy ring
+        const x = Math.random() * this.width;
+        const y = Math.random() * this.height;
+        let radius = 0;
+        
+        const expandRing = () => {
+            radius += 3;
+            
+            // Create ring particles
+            const particles = 30;
+            for (let i = 0; i < particles; i++) {
+                const angle = (i / particles) * Math.PI * 2;
+                
+                this.particles.push({
+                    x: x + Math.cos(angle) * radius,
+                    y: y + Math.sin(angle) * radius,
+                    vx: Math.cos(angle) * 0.5,
+                    vy: Math.sin(angle) * 0.5,
+                    life: 20,
+                    maxLife: 20,
+                    size: 2,
+                    color: '100, 255, 200'
+                });
+            }
+            
+            if (radius < 150) {
+                requestAnimationFrame(expandRing);
+            }
+        };
+        
+        expandRing();
     }
     
     drawShipByType(shipType, shipColor) {

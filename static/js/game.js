@@ -166,16 +166,25 @@ class GameEngine {
         });
         
         const result = await response.json();
-        if (!result.success) {
+        if (result.success) {
+            // Update game state and save after successful action
+            if (result.game_state) {
+                this.gameState = result.game_state;
+                this.saveGameState();
+            }
+        } else {
             this.uiManager.showNotification('Action failed', 'danger');
         }
     }
     
     async startNewGame() {
+        // Clear any existing save data to force new star map generation
+        localStorage.removeItem('cosmic_explorer_save');
+        
         const response = await fetch(`${GameConfig.game.apiUrl}/game/new`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: this.sessionId })
+            body: JSON.stringify({ session_id: this.sessionId, force_new: true })
         });
         
         const result = await response.json();
@@ -184,12 +193,74 @@ class GameEngine {
             this.uiManager.updateHUD(this.gameState);
             this.audioManager.playMusic();
             this.generateSpaceEnvironment();
+            
+            // Save the new game state
+            this.saveGameState();
+            
+            // Update region theme immediately
+            if (this.gameState.current_location && this.gameState.current_location.region) {
+                this.renderer.updateRegionTheme(this.gameState.current_location.region);
+            }
         }
     }
     
     async loadGame() {
-        // TODO: Implement save game loading
+        // Try to load saved game state
+        const savedGame = localStorage.getItem('cosmic_explorer_save');
+        
+        if (savedGame) {
+            try {
+                const savedState = JSON.parse(savedGame);
+                
+                // Load game from saved state
+                const response = await fetch(`${GameConfig.game.apiUrl}/game/load`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        session_id: this.sessionId,
+                        saved_state: savedState 
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    this.gameState = result.game_state;
+                    this.uiManager.updateHUD(this.gameState);
+                    this.audioManager.playMusic();
+                    this.generateSpaceEnvironment();
+                    
+                    // Update region theme
+                    if (this.gameState.current_location && this.gameState.current_location.region) {
+                        this.renderer.updateRegionTheme(this.gameState.current_location.region);
+                    }
+                    
+                    this.uiManager.showNotification('Game loaded successfully!', 'success');
+                    return;
+                }
+            } catch (error) {
+                console.error('Failed to load saved game:', error);
+            }
+        }
+        
+        // No save found or load failed - start new game
+        this.uiManager.showNotification('No saved game found. Starting new journey...', 'info');
         this.startNewGame();
+    }
+    
+    saveGameState() {
+        if (this.gameState) {
+            const saveData = {
+                star_map: this.gameState.star_map,
+                current_region_id: this.gameState.current_region_id,
+                current_node_id: this.gameState.current_node_id,
+                player_stats: this.gameState.player_stats,
+                turn_count: this.gameState.turn_count,
+                active_quest: this.gameState.active_quest,
+                timestamp: Date.now()
+            };
+            
+            localStorage.setItem('cosmic_explorer_save', JSON.stringify(saveData));
+        }
     }
     
     // Game actions
