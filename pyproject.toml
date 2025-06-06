@@ -45,9 +45,9 @@ dev = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/username/cosmic-explorer"
-"Bug Tracker" = "https://github.com/username/cosmic-explorer/issues"
-"Documentation" = "https://github.com/username/cosmic-explorer/wiki"
+"Homepage" = "https://github.com/suparious/cosmic-explorer"
+"Bug Tracker" = "https://github.com/suparious/cosmic-explorer/issues"
+"Documentation" = "https://github.com/suparious/cosmic-explorer/wiki"
 
 [project.scripts]
 cosmic-explorer = "api.app:main"
