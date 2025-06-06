@@ -1,0 +1,47 @@
+{
+  "name": "cosmic-explorer",
+  "version": "1.0.0",
+  "description": "A stunning space exploration game with web-based graphics",
+  "main": "api/app.py",
+  "scripts": {
+    "start": "python api/app.py",
+    "dev": "python api/app.py",
+    "test": "python -m pytest tests/",
+    "lint:js": "eslint static/js/",
+    "lint:py": "flake8 .",
+    "format:js": "prettier --write static/js/**/*.js",
+    "format:py": "black ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/suparious/cosmic-explorer.git"
+  },
+  "keywords": [
+    "game",
+    "space",
+    "exploration",
+    "web",
+    "flask",
+    "canvas"
+  ],
+  "author": "Shaun",
+  "license": "MIT",
+  "dependencies": {
+    "socket.io-client": "^4.5.4"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.4",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.29.1"
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
