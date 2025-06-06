@@ -224,6 +224,9 @@ class UIManager {
             return;
         }
         
+        // Close all open modals when switching screens
+        this.closeAllModals();
+        
         // Hide all screens
         Object.values(this.screens).forEach(screen => {
             if (screen) {
@@ -548,12 +551,8 @@ class UIManager {
     }
     
     loadGame() {
-        // TODO: Implement save game loading
-        this.showNotification('Loading saved game...', 'info');
-        this.showScreen('game');
-        if (window.gameEngine) {
-            window.gameEngine.loadGame();
-        }
+        // Show save/load modal in load mode
+        this.showSaveLoadModal('load');
     }
     
     showSettings() {
@@ -581,10 +580,14 @@ class UIManager {
     
     // Save/Load System
     showSaveLoadModal(mode = 'save') {
-        // Create modal if it doesn't exist
-        let modal = document.getElementById('save-load-modal');
-        if (!modal) {
-            modal = document.createElement('div');
+        // Remove any existing modal first to prevent duplicates
+        const existingModal = document.getElementById('save-load-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Create new modal
+        const modal = document.createElement('div');
             modal.id = 'save-load-modal';
             modal.className = 'modal';
             modal.innerHTML = `
@@ -604,8 +607,8 @@ class UIManager {
             `;
             document.body.appendChild(modal);
             
-            // Add styles
-            if (!document.getElementById('save-load-styles')) {
+        // Add styles if not already present
+        if (!document.getElementById('save-load-styles')) {
                 const style = document.createElement('style');
                 style.id = 'save-load-styles';
                 style.textContent = `
@@ -812,7 +815,6 @@ class UIManager {
                 `;
                 document.head.appendChild(style);
             }
-        }
         
         // Update modal based on mode
         this.currentSaveLoadMode = mode;
@@ -828,7 +830,12 @@ class UIManager {
     hideSaveLoadModal() {
         const modal = document.getElementById('save-load-modal');
         if (modal) {
-            modal.style.display = 'none';
+            modal.style.animation = 'fade-out 0.3s ease-out';
+            setTimeout(() => {
+                modal.style.display = 'none';
+                // Remove modal from DOM to prevent duplicates
+                modal.remove();
+            }, 300);
         }
     }
     
@@ -1013,10 +1020,63 @@ class UIManager {
                             this.showNotification(`Game loaded from slot ${slot}!`, 'success');
                             this.hideSaveLoadModal();
                             
-                            // Update game state
+                            // Update game state and ensure proper initialization
                             if (window.gameEngine) {
+                                // Update the game state
                                 window.gameEngine.gameState = data.game_state;
-                                window.gameEngine.updateUI();
+                                window.gameEngine.sessionId = data.session_id || 'default';
+                                
+                                // Emit game state update event for all components
+                                document.dispatchEvent(new CustomEvent('gameStateUpdated', {
+                                    detail: data.game_state
+                                }));
+                                
+                                // Update all UI components
+                                this.updateHUD(data.game_state);
+                                
+                                // Switch to game screen
+                                this.showScreen('game');
+                                
+                                // Start music if not already playing
+                                if (window.audioManager) {
+                                    window.audioManager.playMusic();
+                                    window.audioManager.updateMusicForGameState(data.game_state);
+                                }
+                                
+                                // Update renderer with game state
+                                if (window.gameEngine.renderer) {
+                                    // Update region theme if available
+                                    if (data.game_state.current_location && data.game_state.current_location.region) {
+                                        window.gameEngine.renderer.updateRegionTheme(data.game_state.current_location.region);
+                                    }
+                                    
+                                    // Force ship update
+                                    if (window.gameEngine.renderer.ship) {
+                                        const stats = data.game_state.player_stats;
+                                        window.gameEngine.renderer.ship.health = stats.health;
+                                        window.gameEngine.renderer.ship.condition = stats.ship_condition;
+                                        window.gameEngine.renderer.ship.hasPod = stats.has_flight_pod;
+                                        window.gameEngine.renderer.ship.inPodMode = stats.in_pod_mode;
+                                        window.gameEngine.renderer.ship.podHp = stats.pod_hp;
+                                        window.gameEngine.renderer.ship.podMaxHp = stats.pod_max_hp;
+                                        window.gameEngine.renderer.ship.shipType = stats.ship_type || 'scout';
+                                        window.gameEngine.renderer.ship.shipMods = stats.ship_mods || {};
+                                    }
+                                }
+                                
+                                // Generate new space environment
+                                window.gameEngine.generateSpaceEnvironment();
+                                
+                                // Re-join the socket session with the correct ID
+                                if (window.gameEngine.socket && window.gameEngine.socket.connected) {
+                                    window.gameEngine.socket.emit('join_session', { session_id: window.gameEngine.sessionId });
+                                }
+                            } else {
+                                // Game engine not ready, reload the page to ensure proper initialization
+                                this.showNotification('Reloading game...', 'info');
+                                setTimeout(() => {
+                                    window.location.reload();
+                                }, 1000);
                             }
                         } else {
                             throw new Error(data.error || 'Failed to load game');
@@ -1044,7 +1104,10 @@ class UIManager {
                         
                         if (data.success) {
                             this.showNotification(`Save in slot ${slot} deleted!`, 'success');
-                            this.refreshSaveSlots();
+                            // Add a small delay to ensure the file system updates
+                            setTimeout(() => {
+                                this.refreshSaveSlots();
+                            }, 200);
                         } else {
                             throw new Error(data.error || 'Failed to delete save');
                         }
@@ -1056,7 +1119,39 @@ class UIManager {
         );
     }
     
-    // Add keyboard shortcuts for save/load
+    closeAllModals() {
+        // List of all modal IDs in the game
+        const modalIds = [
+            'choice-modal',
+            'save-load-modal',
+            'pod-mods-modal',
+            'food-modal',
+            'ship-modal',
+            'star-map-modal'
+        ];
+        
+        modalIds.forEach(modalId => {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                // Remove any animations first
+                modal.style.animation = 'none';
+                modal.style.display = 'none';
+                
+                // For dynamically created modals, remove them from DOM
+                if (modalId === 'save-load-modal' || 
+                    modalId === 'pod-mods-modal' || 
+                    modalId === 'food-modal' || 
+                    modalId === 'ship-modal' || 
+                    modalId === 'star-map-modal') {
+                    modal.remove();
+                }
+            }
+        });
+        
+        // Also remove any stray notifications
+        document.querySelectorAll('.notification').forEach(notif => notif.remove());
+    }
+    
     setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
             // F5 - Quick Save
@@ -1462,19 +1557,21 @@ class UIManager {
                     flex-shrink: 0;
                     }
                 .modal-close {
-                    background: none;
-                    border: none;
-                    color: var(--text-primary);
-                    font-size: 2rem;
-                    cursor: pointer;
-                    padding: 0;
-                    width: 40px;
-                    height: 40px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: all 0.3s ease;
-                }
+                background: none;
+                border: none;
+                color: var(--text-primary);
+                font-size: 2rem;
+                cursor: pointer;
+                padding: 0;
+                width: 40px;
+                height: 40px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.3s ease;
+                    z-index: 10;
+                        position: relative;
+                    }
                 .modal-close:hover {
                     color: var(--danger-color);
                     transform: rotate(90deg);

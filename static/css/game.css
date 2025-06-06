@@ -465,16 +465,30 @@ body {
 
 /* Modal */
 .modal {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.8);
-    display: flex;
+    display: none;
     justify-content: center;
     align-items: center;
     backdrop-filter: blur(5px);
+    z-index: 1000;
+}
+
+/* Ensure modals stack properly */
+#choice-modal { z-index: 1001; }
+#save-load-modal { z-index: 1002; }
+#pod-mods-modal { z-index: 1003; }
+#food-modal { z-index: 1004; }
+#ship-modal { z-index: 1005; }
+#star-map-modal { z-index: 1006; }
+
+/* Notification should always be on top */
+.notification {
+    z-index: 9999;
 }
 
 .modal-content {

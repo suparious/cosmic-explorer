@@ -63,6 +63,13 @@ pip install -r requirements.txt
 1. Run the Flask server:
 
 ```bash
+# Linux/Mac:
+./start_game.sh
+
+# Windows:
+start_game.bat
+
+# Or manually:
 python api/app.py
 ```
 
@@ -138,8 +145,8 @@ http://localhost:5000
 ## Future Enhancements
 
 - [ ] Sprite-based graphics (PNG assets)
-- [ ] Save/Load game functionality
-- [ ] Interactive star map
+- [x] Save/Load game functionality (5 save slots)
+- [ ] Interactive star map (partial implementation)
 - [ ] Ship customization UI
 - [ ] Multiplayer support
 - [ ] Mobile touch controls
