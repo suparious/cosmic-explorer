@@ -1,15 +1,395 @@
 // Main Game Engine for Cosmic Explorer
+// Refactored into a more modular structure
+
+// SocketHandler - manages WebSocket communication
+class SocketHandler {
+    constructor(gameEngine) {
+        this.gameEngine = gameEngine;
+        this.socket = null;
+        this.isConnected = false;
+    }
+    
+    init() {
+        console.log('Initializing socket connection...');
+        this.socket = io();
+        this.setupHandlers();
+        return this.socket;
+    }
+    
+    setupHandlers() {
+        this.socket.on('connect', () => {
+            console.log('Connected to server');
+            this.isConnected = true;
+            this.joinSession(this.gameEngine.sessionId);
+        });
+        
+        this.socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            this.isConnected = false;
+        });
+        
+        this.socket.on('game_state', (state) => {
+            this.handleGameState(state);
+        });
+        
+        this.socket.on('game_event', (event) => {
+            this.handleGameEvent(event);
+        });
+    }
+    
+    joinSession(sessionId) {
+        if (this.socket && this.isConnected) {
+            this.socket.emit('join_session', { session_id: sessionId });
+        }
+    }
+    
+    handleGameState(state) {
+        this.gameEngine.gameState = state;
+        this.gameEngine.uiManager.updateHUD(state);
+        
+        // Dispatch custom event for other components
+        document.dispatchEvent(new CustomEvent('gameStateUpdated', {
+            detail: state
+        }));
+        
+        // Update music based on game state
+        if (this.gameEngine.audioManager) {
+            this.gameEngine.audioManager.updateMusicForGameState(state);
+        }
+        
+        // Check for game over or victory
+        if (state.game_over) {
+            if (state.victory) {
+                this.gameEngine.uiManager.showVictory('Victory! You have amassed great wealth!');
+            } else {
+                this.gameEngine.uiManager.showGameOver('Your journey has ended.');
+            }
+        }
+    }
+    
+    handleGameEvent(event) {
+        // Add to event log
+        this.gameEngine.uiManager.addEventMessage(event.message, event.type);
+        
+        // Delegate to effects manager for visual/audio effects
+        this.gameEngine.effectsManager.handleEventEffects(event);
+        
+        // Handle combat events specially
+        if (event.type === 'combat_start' || event.type === 'combat' || event.type === 'combat_end') {
+            this.handleCombatEvent(event);
+        }
+        
+        // Show choices if available (except for combat which uses its own UI)
+        if (event.choices && event.choices.length > 0 && event.type !== 'combat_start' && event.type !== 'combat') {
+            this.gameEngine.uiManager.showChoiceModal(event.message, event.choices, (choice) => {
+                this.gameEngine.sendAction('choice', { choice });
+            });
+        }
+    }
+    
+    handleCombatEvent(event) {
+        const combatUI = this.gameEngine.combatUI;
+        if (!combatUI) return;
+        
+        switch (event.type) {
+            case 'combat_start':
+                const combatState = event.combat_state || (event.result && event.result.combat_state);
+                if (combatState) {
+                    combatUI.showCombat(combatState, event.choices || ['Attack', 'Flee', 'Negotiate']);
+                }
+                break;
+                
+            case 'combat':
+                const ongoingCombatState = event.combat_state || (event.result && event.result.combat_state);
+                if (ongoingCombatState) {
+                    combatUI.updateCombatDisplay(ongoingCombatState);
+                    combatUI.updateCombatActions(event.choices || ['Attack', 'Flee', 'Negotiate']);
+                    
+                    // Add log entries for combat messages
+                    if (event.message) {
+                        const messages = event.message.split('\n').filter(m => m.trim());
+                        messages.forEach(msg => {
+                            const type = msg.includes('damage') || msg.includes('Hit') ? 'damage' : 
+                                       msg.includes('Missed') || msg.includes('evade') ? 'normal' : 'success';
+                            combatUI.addLogEntry(msg, type);
+                        });
+                    }
+                }
+                break;
+                
+            case 'combat_end':
+                if (event.rewards) {
+                    combatUI.showCombatRewards(event.rewards);
+                } else {
+                    combatUI.hideCombat();
+                }
+                break;
+        }
+    }
+}
+
+// EffectsManager - handles visual and audio effects
+class EffectsManager {
+    constructor(gameEngine) {
+        this.gameEngine = gameEngine;
+    }
+    
+    handleEventEffects(event) {
+        const audioManager = this.gameEngine.audioManager;
+        const renderer = this.gameEngine.renderer;
+        const uiManager = this.gameEngine.uiManager;
+        
+        switch (event.type) {
+            case 'navigation':
+                audioManager.playSound('navigate');
+                renderer.createThrustParticles();
+                break;
+                
+            case 'scan':
+                audioManager.playSound('scan');
+                renderer.startScanEffect();
+                break;
+                
+            case 'repair':
+                audioManager.playSound('repair');
+                this.createHealingEffect();
+                break;
+                
+            case 'danger':
+                audioManager.playAlertSound();
+                this.shakeScreen();
+                break;
+                
+            case 'success':
+                audioManager.playSound('success');
+                this.createSuccessEffect();
+                break;
+                
+            case 'explosion':
+                audioManager.playExplosionSound();
+                renderer.createExplosion(renderer.ship.x, renderer.ship.y);
+                break;
+                
+            case 'heal':
+                audioManager.playSound('success');
+                this.createHealingEffect();
+                this.animateHealthBar();
+                break;
+                
+            case 'pod_activated':
+                audioManager.playAlertSound();
+                this.createPodEjectionEffect();
+                uiManager.showNotification('ESCAPE POD ACTIVATED!', 'warning');
+                break;
+                
+            case 'purchase':
+                audioManager.playSound('success');
+                this.refreshAugmentationsModal();
+                break;
+                
+            case 'combat_start':
+                audioManager.playAlertSound();
+                break;
+        }
+    }
+    
+    createWarpEffect() {
+        const ship = this.gameEngine.renderer.ship;
+        const particleSystem = this.gameEngine.particleSystem;
+        const emitter = particleSystem.createEmitter({
+            x: ship.x,
+            y: ship.y,
+            rate: 100,
+            lifetime: 1000,
+            particleLife: 30,
+            particleSize: 2,
+            particleColor: '255, 255, 255',
+            particleSpeed: 10,
+            particleSpread: 0.3
+        });
+        
+        // Update emitter position with ship
+        const updateEmitter = setInterval(() => {
+            emitter.x = this.gameEngine.renderer.ship.x;
+            emitter.y = this.gameEngine.renderer.ship.y;
+        }, 16);
+        
+        setTimeout(() => {
+            clearInterval(updateEmitter);
+            particleSystem.removeEmitter(emitter);
+        }, 1000);
+    }
+    
+    createHealingEffect() {
+        const ship = this.gameEngine.renderer.ship;
+        this.gameEngine.particleSystem.emit(ship.x, ship.y, 20, {
+            ...ParticleEffects.healing,
+            direction: -Math.PI / 2
+        });
+    }
+    
+    createSuccessEffect() {
+        const ship = this.gameEngine.renderer.ship;
+        this.gameEngine.particleSystem.emit(ship.x, ship.y, 30, ParticleEffects.sparkle);
+    }
+    
+    createPodEjectionEffect() {
+        const ship = this.gameEngine.renderer.ship;
+        
+        // Create explosion effect at ship location
+        this.gameEngine.renderer.createExplosion(ship.x, ship.y);
+        
+        // Create ejection particles
+        for (let i = 0; i < 50; i++) {
+            const angle = (Math.PI * 2 * i) / 50;
+            const speed = 5 + Math.random() * 10;
+            const particle = {
+                x: ship.x,
+                y: ship.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 60,
+                maxLife: 60,
+                size: Math.random() * 3 + 1,
+                color: '255, 200, 0'
+            };
+            this.gameEngine.renderer.particles.push(particle);
+        }
+        
+        // Screen shake effect
+        this.shakeScreen();
+    }
+    
+    animateShipMovement(targetX, targetY) {
+        const renderer = this.gameEngine.renderer;
+        const startX = renderer.ship.x;
+        const startY = renderer.ship.y;
+        const duration = 2000;
+        const startTime = Date.now();
+        
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Easing function
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            
+            // Update ship position
+            renderer.ship.x = startX + (targetX - startX) * easeProgress;
+            renderer.ship.y = startY + (targetY - startY) * easeProgress;
+            
+            // Create thrust particles
+            if (progress < 1 && Math.random() < 0.5) {
+                renderer.createThrustParticles();
+            }
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            }
+        };
+        
+        animate();
+    }
+    
+    animatePodMovement(targetX, targetY) {
+        const renderer = this.gameEngine.renderer;
+        const startX = renderer.ship.x;
+        const startY = renderer.ship.y;
+        const duration = 3000; // Slower than ship
+        const startTime = Date.now();
+        
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // More erratic movement for pod
+            const wobble = Math.sin(elapsed * 0.01) * 5;
+            const easeProgress = 1 - Math.pow(1 - progress, 2);
+            
+            // Update pod position
+            renderer.ship.x = startX + (targetX - startX) * easeProgress + wobble;
+            renderer.ship.y = startY + (targetY - startY) * easeProgress;
+            
+            // Create small thrust particles
+            if (progress < 1 && Math.random() < 0.3) {
+                const particle = {
+                    x: renderer.ship.x,
+                    y: renderer.ship.y,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: (Math.random() - 0.5) * 2,
+                    life: 20,
+                    maxLife: 20,
+                    size: 1,
+                    color: '255, 200, 0'
+                };
+                renderer.particles.push(particle);
+            }
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            }
+        };
+        
+        animate();
+    }
+    
+    shakeScreen() {
+        const canvas = this.gameEngine.renderer.canvas;
+        const originalTransform = canvas.style.transform;
+        let shakeIntensity = 10;
+        
+        const shake = () => {
+            if (shakeIntensity <= 0) {
+                canvas.style.transform = originalTransform;
+                return;
+            }
+            
+            const x = (Math.random() - 0.5) * shakeIntensity;
+            const y = (Math.random() - 0.5) * shakeIntensity;
+            canvas.style.transform = `translate(${x}px, ${y}px)`;
+            
+            shakeIntensity -= 0.5;
+            requestAnimationFrame(shake);
+        };
+        
+        shake();
+    }
+    
+    animateHealthBar() {
+        const healthBar = document.querySelector('.health-fill');
+        if (healthBar) {
+            healthBar.parentElement.classList.add('healing-effect');
+            setTimeout(() => healthBar.parentElement.classList.remove('healing-effect'), 1000);
+        }
+    }
+    
+    refreshAugmentationsModal() {
+        const modal = document.getElementById('choice-modal');
+        const modalTitle = document.getElementById('choice-title');
+        if (modal && modal.style.display !== 'none' && modalTitle && modalTitle.textContent === 'Pod Augmentations') {
+            this.gameEngine.uiManager.showAugmentationsModal();
+        }
+    }
+}
+
+// Main Game Engine
 class GameEngine {
     constructor() {
-        this.socket = null;
         this.sessionId = 'default';
         this.gameState = null;
+        this.isRunning = false;
+        this.lastFrameTime = 0;
+        
+        // Core systems
         this.renderer = null;
         this.particleSystem = null;
         this.audioManager = null;
         this.uiManager = null;
-        this.isRunning = false;
-        this.lastFrameTime = 0;
+        this.combatUI = null;
+        
+        // Module handlers
+        this.socketHandler = null;
+        this.effectsManager = null;
         
         // Game objects for visualization
         this.currentLocation = null;
@@ -20,9 +400,12 @@ class GameEngine {
         try {
             console.log('GameEngine.init() starting...');
             
-            // Initialize socket connection
-            this.socket = io();
-            this.setupSocketHandlers();
+            // Initialize socket handler
+            this.socketHandler = new SocketHandler(this);
+            this.socketHandler.init();
+            
+            // Initialize effects manager
+            this.effectsManager = new EffectsManager(this);
             
             // Initialize subsystems
             const canvas = document.getElementById('game-canvas');
@@ -64,140 +447,6 @@ class GameEngine {
         }
     }
     
-    setupSocketHandlers() {
-        this.socket.on('connect', () => {
-            console.log('Connected to server');
-            this.socket.emit('join_session', { session_id: this.sessionId });
-        });
-        
-        this.socket.on('game_state', (state) => {
-            this.gameState = state;
-            this.uiManager.updateHUD(state);
-            
-            // Dispatch custom event for other components
-            document.dispatchEvent(new CustomEvent('gameStateUpdated', {
-                detail: state
-            }));
-            
-            // Update music based on game state
-            if (this.audioManager) {
-                this.audioManager.updateMusicForGameState(state);
-            }
-            
-            // Check for game over or victory
-            if (state.game_over) {
-                if (state.victory) {
-                    this.uiManager.showVictory('Victory! You have amassed great wealth!');
-                } else {
-                    this.uiManager.showGameOver('Your journey has ended.');
-                }
-            }
-        });
-        
-        this.socket.on('game_event', (event) => {
-            this.handleGameEvent(event);
-        });
-        
-        this.socket.on('disconnect', () => {
-            console.log('Disconnected from server');
-        });
-    }
-    
-    handleGameEvent(event) {
-        // Add to event log
-        this.uiManager.addEventMessage(event.message, event.type);
-        
-        // Play appropriate sound
-        switch (event.type) {
-            case 'navigation':
-                this.audioManager.playSound('navigate');
-                this.renderer.createThrustParticles();
-                break;
-            case 'scan':
-                this.audioManager.playSound('scan');
-                this.renderer.startScanEffect();
-                break;
-            case 'repair':
-                this.audioManager.playSound('repair');
-                this.createHealingEffect();
-                break;
-            case 'danger':
-                this.audioManager.playAlertSound();
-                this.shakeScreen();
-                break;
-            case 'success':
-                this.audioManager.playSound('success');
-                this.createSuccessEffect();
-                break;
-            case 'explosion':
-                this.audioManager.playExplosionSound();
-                this.renderer.createExplosion(this.renderer.ship.x, this.renderer.ship.y);
-                break;
-            case 'heal':
-                this.audioManager.playSound('success');
-                this.createHealingEffect();
-                // Add healing animation to health bar
-                const healthBar = document.querySelector('.health-fill');
-                if (healthBar) {
-                    healthBar.parentElement.classList.add('healing-effect');
-                    setTimeout(() => healthBar.parentElement.classList.remove('healing-effect'), 1000);
-                }
-                break;
-            case 'pod_activated':
-                this.audioManager.playAlertSound();
-                this.createPodEjectionEffect();
-                this.uiManager.showNotification('ESCAPE POD ACTIVATED!', 'warning');
-                break;
-            case 'purchase':
-                this.audioManager.playSound('success');
-                // Refresh augmentations modal if it's open
-                const modal = document.getElementById('choice-modal');
-                const modalTitle = document.getElementById('choice-title');
-                if (modal && modal.style.display !== 'none' && modalTitle && modalTitle.textContent === 'Pod Augmentations') {
-                    this.uiManager.showAugmentationsModal();
-                }
-                break;
-            case 'combat_start':
-                this.audioManager.playAlertSound();
-                // Store combat state in the event or get from result
-                const combatState = event.combat_state || (event.result && event.result.combat_state);
-                if (combatState && this.combatUI) {
-                    this.combatUI.showCombat(combatState, event.choices || ['Attack', 'Flee', 'Negotiate']);
-                }
-                break;
-            case 'combat':
-                const ongoingCombatState = event.combat_state || (event.result && event.result.combat_state);
-                if (ongoingCombatState && this.combatUI) {
-                    this.combatUI.updateCombatDisplay(ongoingCombatState);
-                    this.combatUI.updateCombatActions(event.choices || ['Attack', 'Flee', 'Negotiate']);
-                    // Add log entries for combat messages
-                    if (event.message) {
-                        const messages = event.message.split('\n').filter(m => m.trim());
-                        messages.forEach(msg => {
-                            const type = msg.includes('damage') || msg.includes('Hit') ? 'damage' : 
-                                       msg.includes('Missed') || msg.includes('evade') ? 'normal' : 'success';
-                            this.combatUI.addLogEntry(msg, type);
-                        });
-                    }
-                }
-                break;
-            case 'combat_end':
-                if (event.rewards && this.combatUI) {
-                    this.combatUI.showCombatRewards(event.rewards);
-                } else if (this.combatUI) {
-                    this.combatUI.hideCombat();
-                }
-                break;
-        }
-        
-        // Show choices if available (except for combat which uses its own UI)
-        if (event.choices && event.choices.length > 0 && event.type !== 'combat_start' && event.type !== 'combat') {
-            this.uiManager.showChoiceModal(event.message, event.choices, (choice) => {
-                this.sendAction('choice', { choice });
-            });
-        }
-    }
-    
     async sendAction(action, data = {}) {
         const response = await fetch(`${GameConfig.game.apiUrl}/game/action/${this.sessionId}`, {
             method: 'POST',
@@ -207,10 +456,9 @@ class GameEngine {
         
         const result = await response.json();
         if (result.success) {
-            // Update game state and save after successful action
+            // Update game state
             if (result.game_state) {
                 this.gameState = result.game_state;
-                this.saveGameState();
                 
                 // Dispatch custom event for state changes
                 document.dispatchEvent(new CustomEvent('gameStateUpdated', {
@@ -220,6 +468,8 @@ class GameEngine {
         } else {
             this.uiManager.showNotification('Action failed', 'danger');
         }
+        
+        return result;
     }
     
     async startNewGame() {
@@ -239,24 +489,11 @@ class GameEngine {
             this.audioManager.playMusic();
             this.generateSpaceEnvironment();
             
-            // Save the new game state
-            this.saveGameState();
-            
             // Update region theme immediately
             if (this.gameState.current_location && this.gameState.current_location.region) {
                 this.renderer.updateRegionTheme(this.gameState.current_location.region);
             }
         }
-    }
-    
-    async loadGame() {
-        // Show the save/load modal in load mode instead of using localStorage
-        this.uiManager.showSaveLoadModal('load');
-    }
-    
-    saveGameState() {
-        // Auto-save is now handled by the backend after turn-consuming actions
-        // This function is kept for compatibility but does nothing
     }
     
     // Game actions
@@ -273,13 +510,25 @@ class GameEngine {
         if (this.gameState && this.gameState.player_stats.in_pod_mode) {
             this.audioManager.playSound('alert');
             // Slower, more erratic movement in pod
-            this.animatePodMovement(targetX, targetY);
+            this.effectsManager.animatePodMovement(targetX, targetY);
         } else {
             // Create warp effect
             this.audioManager.playWarpSound();
-            this.createWarpEffect();
+            this.effectsManager.createWarpEffect();
             // Move ship
-            this.animateShipMovement(targetX, targetY);
+            this.effectsManager.animateShipMovement(targetX, targetY);
+        }
+    }
+    
+    scanArea() {
+        this.sendAction('event');
+        this.renderer.startScanEffect();
+        this.audioManager.playSound('scan');
+    }
+    
+    repair() {
+        if (this.gameState && this.gameState.at_repair_location) {
+            this.sendAction('repair');
         }
     }
     
@@ -295,29 +544,37 @@ class GameEngine {
         this.sendAction('buy_augmentation', { augmentation_id: augId });
     }
     
-    showAugmentations() {
-        // Show pod augmentations modal
-        if (this.gameState && this.gameState.at_repair_location && this.gameState.player_stats.has_flight_pod) {
-            this.uiManager.showAugmentationsModal();
-        } else {
-            this.uiManager.showNotification('Must be at repair location with pod to view augmentations', 'info');
-        }
-    }
-    
     sendDistressSignal() {
         this.sendAction('distress_signal');
     }
     
-    scanArea() {
-        this.sendAction('event');
-        this.renderer.startScanEffect();
-        this.audioManager.playSound('scan');
+    mine() {
+        this.sendAction('mine');
+        // Play mining sound effect
+        this.audioManager.playSound('scan'); // Using scan sound for now
+        // Add visual effect
+        const ship = this.renderer.ship;
+        if (ship) {
+            // Create mining beam effect
+            for (let i = 0; i < 20; i++) {
+                const angle = (Math.PI * 2 * i) / 20;
+                const particle = {
+                    x: ship.x + Math.cos(angle) * 50,
+                    y: ship.y + Math.sin(angle) * 50,
+                    vx: Math.cos(angle) * 2,
+                    vy: Math.sin(angle) * 2,
+                    life: 30,
+                    maxLife: 30,
+                    size: 2,
+                    color: '255, 200, 0'
+                };
+                this.renderer.particles.push(particle);
+            }
+        }
     }
     
-    repair() {
-        if (this.gameState && this.gameState.at_repair_location) {
-            this.sendAction('repair');
-        }
+    consumeFood(amount) {
+        this.sendAction('consume_food', { amount: amount });
     }
     
     showInventory() {
@@ -350,29 +607,28 @@ class GameEngine {
         }
     }
     
-    mine() {
-        this.sendAction('mine');
-        // Play mining sound effect
-        this.audioManager.playSound('scan'); // Using scan sound for now
-        // Add visual effect
-        const ship = this.renderer.ship;
-        if (ship) {
-            // Create mining beam effect
-            for (let i = 0; i < 20; i++) {
-                const angle = (Math.PI * 2 * i) / 20;
-                const particle = {
-                    x: ship.x + Math.cos(angle) * 50,
-                    y: ship.y + Math.sin(angle) * 50,
-                    vx: Math.cos(angle) * 2,
-                    vy: Math.sin(angle) * 2,
-                    life: 30,
-                    maxLife: 30,
-                    size: 2,
-                    color: '255, 200, 0'
-                };
-                this.renderer.particles.push(particle);
-            }
+    showAugmentations() {
+        // Show pod augmentations modal
+        if (this.gameState && this.gameState.at_repair_location && this.gameState.player_stats.has_flight_pod) {
+            this.uiManager.showAugmentationsModal();
+        } else {
+            this.uiManager.showNotification('Must be at repair location with pod to view augmentations', 'info');
         }
+    }
+    
+    showPodMods() {
+        if (!this.gameState || !this.gameState.player_stats.has_flight_pod) {
+            this.uiManager.showNotification('You need a pod to install modifications!', 'danger');
+            return;
+        }
+        
+        if (this.gameState.player_stats.in_pod_mode) {
+            this.uiManager.showNotification('Cannot modify pod while in pod mode!', 'danger');
+            return;
+        }
+        
+        // Show available augmentations
+        this.uiManager.showPodModsModal(this.gameState);
     }
     
     async fetchNavigationOptions() {
@@ -394,42 +650,7 @@ class GameEngine {
         await this.sendAction('navigate', { target_region_id: regionId });
     }
     
-    buyPod() {
-        this.sendAction('buy_pod');
-    }
-    
-    buyShip() {
-        this.sendAction('buy_ship');
-    }
-    
-    sendDistressSignal() {
-        this.sendAction('distress_signal');
-    }
-    
-    showPodMods() {
-        if (!this.gameState || !this.gameState.player_stats.has_flight_pod) {
-            this.uiManager.showNotification('You need a pod to install modifications!', 'danger');
-            return;
-        }
-        
-        if (this.gameState.player_stats.in_pod_mode) {
-            this.uiManager.showNotification('Cannot modify pod while in pod mode!', 'danger');
-            return;
-        }
-        
-        // Show available augmentations
-        this.uiManager.showPodModsModal(this.gameState);
-    }
-    
-    buyAugmentation(augmentationId) {
-        this.sendAction('buy_augmentation', { augmentation_id: augmentationId });
-    }
-    
-    consumeFood(amount) {
-        this.sendAction('consume_food', { amount: amount });
-    }
-    
-    // Visual effects
+    // Visual environment generation
     generateSpaceEnvironment() {
         // Clear existing objects
         this.renderer.planets = [];
@@ -461,138 +682,6 @@ class GameEngine {
             const radius = 10 + Math.random() * 30;
             this.renderer.addAsteroid(x, y, radius);
         }
-    }
-    
-    animateShipMovement(targetX, targetY) {
-        const startX = this.renderer.ship.x;
-        const startY = this.renderer.ship.y;
-        const duration = 2000;
-        const startTime = Date.now();
-        
-        const animate = () => {
-            const elapsed = Date.now() - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            
-            // Easing function
-            const easeProgress = 1 - Math.pow(1 - progress, 3);
-            
-            // Update ship position
-            this.renderer.ship.x = startX + (targetX - startX) * easeProgress;
-            this.renderer.ship.y = startY + (targetY - startY) * easeProgress;
-            
-            // Create thrust particles
-            if (progress < 1 && Math.random() < 0.5) {
-                this.renderer.createThrustParticles();
-            }
-            
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            }
-        };
-        
-        animate();
-    }
-    
-    animatePodMovement(targetX, targetY) {
-        const startX = this.renderer.ship.x;
-        const startY = this.renderer.ship.y;
-        const duration = 3000; // Slower than ship
-        const startTime = Date.now();
-        
-        const animate = () => {
-            const elapsed = Date.now() - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            
-            // More erratic movement for pod
-            const wobble = Math.sin(elapsed * 0.01) * 5;
-            const easeProgress = 1 - Math.pow(1 - progress, 2);
-            
-            // Update pod position
-            this.renderer.ship.x = startX + (targetX - startX) * easeProgress + wobble;
-            this.renderer.ship.y = startY + (targetY - startY) * easeProgress;
-            
-            // Create small thrust particles
-            if (progress < 1 && Math.random() < 0.3) {
-                const particle = {
-                    x: this.renderer.ship.x,
-                    y: this.renderer.ship.y,
-                    vx: (Math.random() - 0.5) * 2,
-                    vy: (Math.random() - 0.5) * 2,
-                    life: 20,
-                    maxLife: 20,
-                    size: 1,
-                    color: '255, 200, 0'
-                };
-                this.renderer.particles.push(particle);
-            }
-            
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            }
-        };
-        
-        animate();
-    }
-    
-    createWarpEffect() {
-        const ship = this.renderer.ship;
-        const emitter = this.particleSystem.createEmitter({
-            x: ship.x,
-            y: ship.y,
-            rate: 100,
-            lifetime: 1000,
-            particleLife: 30,
-            particleSize: 2,
-            particleColor: '255, 255, 255',
-            particleSpeed: 10,
-            particleSpread: 0.3
-        });
-        
-        // Update emitter position with ship
-        const updateEmitter = setInterval(() => {
-            emitter.x = this.renderer.ship.x;
-            emitter.y = this.renderer.ship.y;
-        }, 16);
-        
-        setTimeout(() => {
-            clearInterval(updateEmitter);
-            this.particleSystem.removeEmitter(emitter);
-        }, 1000);
-    }
-    
-    createHealingEffect() {
-        const ship = this.renderer.ship;
-        this.particleSystem.emit(ship.x, ship.y, 20, {
-            ...ParticleEffects.healing,
-            direction: -Math.PI / 2
-        });
-    }
-    
-    createSuccessEffect() {
-        const ship = this.renderer.ship;
-        this.particleSystem.emit(ship.x, ship.y, 30, ParticleEffects.sparkle);
-    }
-    
-    shakeScreen() {
-        const canvas = this.renderer.canvas;
-        const originalTransform = canvas.style.transform;
-        let shakeIntensity = 10;
-        
-        const shake = () => {
-            if (shakeIntensity <= 0) {
-                canvas.style.transform = originalTransform;
-                return;
-            }
-            
-            const x = (Math.random() - 0.5) * shakeIntensity;
-            const y = (Math.random() - 0.5) * shakeIntensity;
-            canvas.style.transform = `translate(${x}px, ${y}px)`;
-            
-            shakeIntensity -= 0.5;
-            requestAnimationFrame(shake);
-        };
-        
-        shake();
     }
     
     // Render loop
@@ -640,31 +729,15 @@ class GameEngine {
         requestAnimationFrame(() => this.renderLoop());
     }
     
-    createPodEjectionEffect() {
-        const ship = this.renderer.ship;
-        
-        // Create explosion effect at ship location
-        this.renderer.createExplosion(ship.x, ship.y);
-        
-        // Create ejection particles
-        for (let i = 0; i < 50; i++) {
-            const angle = (Math.PI * 2 * i) / 50;
-            const speed = 5 + Math.random() * 10;
-            const particle = {
-                x: ship.x,
-                y: ship.y,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed,
-                life: 60,
-                maxLife: 60,
-                size: Math.random() * 3 + 1,
-                color: '255, 200, 0'
-            };
-            this.renderer.particles.push(particle);
-        }
-        
-        // Screen shake effect
-        this.shakeScreen();
+    // Save/Load compatibility methods
+    loadGame() {
+        // Show the save/load modal in load mode
+        this.uiManager.showSaveLoadModal('load');
+    }
+    
+    saveGameState() {
+        // Auto-save is now handled by the backend
+        // This function is kept for compatibility but does nothing
     }
 }
 
