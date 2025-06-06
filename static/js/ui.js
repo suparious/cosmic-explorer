@@ -235,21 +235,24 @@ class UIManager {
         // Close all open modals when switching screens
         this.closeAllModals();
         
-        // Hide all screens
-        Object.values(this.screens).forEach(screen => {
-            if (screen) {
-                screen.classList.remove('active');
+        // Small delay to ensure modals are fully closed
+        setTimeout(() => {
+            // Hide all screens
+            Object.values(this.screens).forEach(screen => {
+                if (screen) {
+                    screen.classList.remove('active');
+                }
+            });
+            
+            // Show requested screen
+            this.screens[screenName].classList.add('active');
+            this.currentScreen = screenName;
+            
+            // Update Continue button visibility when showing main menu
+            if (screenName === 'mainMenu') {
+                this.updateContinueButtonVisibility();
             }
-        });
-        
-        // Show requested screen
-        this.screens[screenName].classList.add('active');
-        this.currentScreen = screenName;
-        
-        // Update Continue button visibility when showing main menu
-        if (screenName === 'mainMenu') {
-            this.updateContinueButtonVisibility();
-        }
+        }, 50);
     }
     
     updateHUD(gameState) {
@@ -1080,6 +1083,12 @@ class UIManager {
             async (choice) => {
                 if (choice === 1) {
                     try {
+                        // Close all modals and clear notifications before loading
+                        this.closeAllModals();
+                        document.querySelectorAll('.notification').forEach(notif => notif.remove());
+                        
+                        // Small delay to ensure modals are fully closed
+                        await new Promise(resolve => setTimeout(resolve, 100));
                         const response = await fetch(`/api/load/${slot}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -1213,6 +1222,14 @@ class UIManager {
                 modal.style.animation = 'none';
                 modal.style.display = 'none';
                 
+                // Clear any modal content to prevent stale data
+                if (modalId === 'choice-modal') {
+                    const choiceList = document.getElementById('choice-list');
+                    if (choiceList) {
+                        choiceList.innerHTML = '';
+                    }
+                }
+                
                 // For dynamically created modals, remove them from DOM
                 if (modalId === 'save-load-modal' || 
                     modalId === 'pod-mods-modal' || 
@@ -1223,6 +1240,10 @@ class UIManager {
                 }
             }
         });
+        
+        // Clear active modals array
+        this.activeModals = [];
+        this.currentModalZIndex = this.modalZIndexBase;
         
         // Also remove any stray notifications
         document.querySelectorAll('.notification').forEach(notif => notif.remove());
