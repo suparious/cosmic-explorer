@@ -55,7 +55,7 @@ fi
 # Start the game server
 echo ""
 echo "✨ Launching game server..."
-echo "📍 Open your browser and navigate to: http://localhost:5000"
+echo "📍 Open your browser and navigate to: http://$(hostname):5000"
 echo ""
 echo "Press Ctrl+C to stop the server"
 echo ""
