@@ -15,10 +15,12 @@ A stunning space exploration game transformed from ASCII terminal graphics to a 
 
 ### Audio System
 
-- Dynamic sound effects for all actions
-- Atmospheric space ambience music
-- Procedural audio for special effects
+- **100% Procedurally Generated** - No sound files needed!
+- Dynamic sound effects for all actions (20+ effects)
+- Atmospheric space ambience music (5 dynamic tracks)
+- Real-time audio synthesis using Web Audio API
 - Volume controls for music, SFX, and master
+- See `/static/sounds/README.md` for implementation details
 
 ### Gameplay Features
 

@@ -157,6 +157,10 @@ class EffectsManager {
             case 'navigation':
                 audioManager.playSound('navigate');
                 renderer.createThrustParticles();
+                // Check if we arrived at a station and play docking sound
+                if (event.arrived_at && event.arrived_at.includes('station')) {
+                    setTimeout(() => audioManager.playDockingSound(), 1500);
+                }
                 break;
                 
             case 'scan':
@@ -203,9 +207,30 @@ class EffectsManager {
                 break;
                 
             case 'purchase':
-                audioManager.playSound('success');
-                this.refreshAugmentationsModal();
-                break;
+            audioManager.playPurchaseSound();
+            this.refreshAugmentationsModal();
+            break;
+                    
+                case 'item_received':
+                    // Play item pickup sound based on value
+                    if (event.item_value) {
+                        audioManager.playItemPickup(event.item_value);
+                    } else {
+                        audioManager.playItemPickup(100); // Default for unknown value
+                    }
+                    break;
+                    
+                case 'quest_accepted':
+                    audioManager.playQuestAcceptSound();
+                    break;
+                    
+                case 'quest_completed':
+                    audioManager.playQuestCompleteSound();
+                    break;
+                    
+                case 'achievement':
+                    audioManager.playAchievementSound();
+                    break;
                 
             case 'combat_start':
                 audioManager.playAlertSound();

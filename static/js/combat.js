@@ -500,9 +500,9 @@ class CombatUI {
             const enemy = renderer.enemies[0];
             if (enemy) {
                 renderer.firePlayerProjectile(enemy.x, enemy.y);
-                // Add attack sound
+                // Play appropriate weapon sound based on action
                 if (window.gameEngine.audioManager) {
-                    window.gameEngine.audioManager.playSound('laser');
+                    window.gameEngine.audioManager.playWeaponSound(actionId);
                 }
             }
         }

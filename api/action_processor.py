@@ -535,12 +535,38 @@ class ActionProcessor:
     
     def handle_scan(self, session, data):
         """Handle scanning action"""
-        # TODO: Implement scanning mechanics
-        return {
-            "event": "Scanning not yet implemented.",
-            "event_type": "info",
-            "choices": []
-        }
+        # Check for scanner equipment
+        has_advanced_scanner = False
+        for mods in session.player_stats["ship_mods"].values():
+            if "scanner_array" in mods:
+                has_advanced_scanner = True
+                break
+        
+        # Base 30% chance to find something, 50% with advanced scanner
+        find_chance = 0.5 if has_advanced_scanner else 0.3
+        
+        if random.random() < find_chance:
+            # Found something! Use existing random event handler
+            result = self.handle_random_event(session, data)
+            # Modify the message to indicate it was from scanning
+            if "Discovered" not in result["event"] and "Found" not in result["event"]:
+                result["event"] = f"Scan detected: {result['event']}"
+            else:
+                result["event"] = f"Scan successful! {result['event']}"
+            return result
+        else:
+            # Nothing found
+            messages = [
+                "Scan complete. Nothing of interest detected.",
+                "Scan shows only empty space and cosmic dust.",
+                "No significant readings on scanner.",
+                "Scanner sweep complete. Area clear."
+            ]
+            return {
+                "event": random.choice(messages),
+                "event_type": "scan",
+                "choices": []
+            }
     
     def handle_mine(self, session, data):
         """Handle mining action"""
