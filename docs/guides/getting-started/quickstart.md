@@ -1,170 +1,180 @@
 ---
-title: Getting Started with Cosmic Explorer
-tags: [guide, getting-started, setup, quickstart]
+title: Quick Start Guide
+tags: [guides, getting-started, quickstart]
 created: 2025-06-10
 updated: 2025-06-10
 status: active
 ---
 
-# Getting Started with Cosmic Explorer
+# Quick Start Guide
 
-Welcome to Cosmic Explorer! This guide will help you get the game running quickly.
+Get playing Cosmic Explorer in under 5 minutes!
 
-## Quick Start
+## 🚀 Starting the Game
 
-### Prerequisites
-- Python 3.8 or higher
-- Modern web browser (Chrome, Firefox, Safari, Edge)
-- Git (for cloning the repository)
+### Option 1: Windows (Easiest)
+1. Navigate to the game folder
+2. Double-click `start_game.bat`
+3. Your browser opens automatically
+4. Start playing!
 
-### Installation
+### Option 2: Mac/Linux
+1. Open terminal in game folder
+2. Run: `./start_game.sh`
+3. Open browser to `http://localhost:5000`
+4. Start playing!
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/yourusername/cosmic-explorer.git
-   cd cosmic-explorer
-   ```
-
-2. **Install Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Start the Game**
-   ```bash
-   python api/app.py
-   ```
-   
-   Or use the provided scripts:
-   - **Windows**: Double-click `start_game.bat`
-   - **Mac/Linux**: Run `./start_game.sh`
-
-4. **Open in Browser**
-   Navigate to `http://localhost:5000`
-
-## First Time Playing
-
-### Game Objective
-You're a space explorer trying to survive and thrive in a dangerous universe. Navigate between regions, trade goods, fight pirates, and upgrade your ship while managing limited resources.
-
-### Basic Controls
-- **Mouse**: Click on locations to navigate
-- **Keyboard Shortcuts**:
-  - `I` - Open inventory
-  - `S` - Save game
-  - `L` - Load game
-  - `ESC` - Close modals
-
-### Starting Strategy
-1. **Stay Safe Initially**: Avoid dangerous regions until you upgrade
-2. **Trade Wisely**: Buy low at mining colonies, sell high at space stations
-3. **Manage Resources**: 
-   - Keep fuel above 20%
-   - Maintain ship health
-   - Save credits for pod
-4. **Buy Escape Pod Early**: Insurance against ship destruction (500 credits)
-
-## Understanding the Interface
-
-### Main Game View
-```
-┌─────────────────────────────────────┐
-│  Health: ████████░░  Fuel: ██████░░ │  ← Status Bars
-│  Credits: 1000      Location: Eden  │  ← Resources
-├─────────────────────────────────────┤
-│                                     │
-│         [Ship Animation]            │  ← Game Canvas
-│         ✦ ✦ ✦ ✦ ✦                 │  ← Locations
-│                                     │
-├─────────────────────────────────────┤
-│ [Navigate] [Trade] [Repair] [Save]  │  ← Action Buttons
-└─────────────────────────────────────┘
+### Option 3: Python (Direct)
+```bash
+cd cosmic-explorer
+python api/app.py
+# Open http://localhost:5000
 ```
 
-### Key UI Elements
-- **Status Bars**: Visual health and fuel indicators
-- **Resource Display**: Credits, current location
-- **Game Canvas**: Shows ship and nearby locations
-- **Action Buttons**: Context-sensitive based on location
+## 🎮 Your First Game
 
-## Core Gameplay Loop
+### 1. Start New Game
+Click **"New Game"** or press **Enter** on the main menu.
 
-### 1. Navigation Phase
-- Click locations to travel
-- Each jump consumes fuel
-- Random events may occur
+### 2. Understanding the HUD
+```
+┌─────────────────────────────────────────┐
+│ Health: 100  💰 Wealth: 500  Turn: 1    │
+│ ⛽ Fuel: 100  🥫 Food: 50               │
+│ 🚢 Ship: Scout (100/100 HP)             │
+└─────────────────────────────────────────┘
+```
 
-### 2. Location Actions
-- **Planets**: Trade goods, repair ship, buy pod mods
-- **Mining Colonies**: Buy cheap raw materials
-- **Space Stations**: Sell goods for profit
-- **Outposts**: Repair and refuel
+### 3. Basic Controls
+- **Navigate** - Click button or press `N`
+- **Save Game** - Press `F5`
+- **Load Game** - Press `F9`
+- **Inventory** - Press `I`
+- **Close Modals** - Press `ESC`
 
-### 3. Event Resolution
-- **Combat**: Fight or flee from pirates
-- **Discoveries**: Find valuable salvage
-- **Traders**: Special trading opportunities
+## 🗺️ Navigation Basics
 
-### 4. Resource Management
-- **Fuel**: Required for navigation
-- **Health**: Lost in combat, restored with food/repairs
-- **Credits**: Used for all purchases
-- **Cargo**: Limited by weight capacity
+### Moving Around
+1. Click **Navigate** to move randomly
+2. Each move costs **10 fuel**
+3. Watch for events during travel
+4. Some locations have repair stations
 
-## Save System
+### Location Types
+- 🏪 **Trading Posts** - Buy/sell items
+- 🔧 **Repair Stations** - Fix ship, buy upgrades
+- ☄️ **Asteroid Fields** - Mine resources (needs equipment)
+- 🌀 **Wormholes** - Jump between regions
 
-### Manual Saves
-- Press `S` or click Save button
-- Choose from 5 save slots
-- Name your saves for easy identification
+## 💰 Making Money
 
-### Auto-save
-- Automatically saves to slot 0
-- Triggers after significant actions
-- Can be loaded like any manual save
+### Quick Money Tips
+1. **Trade Items** - Buy low, sell high
+2. **Combat** - Defeat pirates for loot
+3. **Mining** - Requires mining laser
+4. **Events** - Lucky discoveries
 
-### Loading Games
-- Press `L` or click Load button
-- Select save slot to restore
-- Continue from exact game state
+### First Purchase Priority
+1. **Escape Pod** (500 credits) - Insurance against death
+2. **Better Ship** - More cargo/combat power
+3. **Ship Mods** - Weapons, shields, tools
 
-## Common Issues
+## ⚔️ Combat Survival
 
-### Game Won't Start
-1. Check Python version: `python --version`
-2. Ensure all dependencies installed
-3. Check port 5000 isn't in use
-4. Try `python3` instead of `python`
+### Combat Basics
+- **Attack** - Standard damage
+- **Evasive** - Reduce damage taken
+- **Flee** - Escape (costs extra fuel)
+- **Negotiate** - Pay for peace
 
-### Can't Connect to Game
-1. Ensure server is running (check terminal)
-2. Try `http://127.0.0.1:5000` instead
-3. Disable browser extensions
-4. Check firewall settings
+### Combat Tips
+- Check enemy strength before engaging
+- Flee if outmatched (better than dying)
+- Upgrade weapons for easier fights
+- Keep ship repaired
 
-### Performance Issues
-1. Close other browser tabs
-2. Disable particle effects (in future settings)
-3. Use Chrome/Firefox for best performance
-4. Check browser console for errors
+## 🛡️ Escape Pod System
 
-## Next Steps
+### Why Buy a Pod?
+- One-time 500 credit investment
+- Saves you when ship is destroyed
+- Can add augmentations for bonuses
+- Essential for risky exploration
 
-### Learn More
-- [[first-game|Your First Game]] - Detailed walkthrough
-- [[game-mechanics|Game Mechanics]] - Deep dive into systems
-- [[advanced-strategies|Advanced Strategies]] - Pro tips
+### Pod Augmentations
+Available at repair stations:
+- **Shield Matrix** - +20 max HP
+- **Scanner Array** - Double scan rewards
+- **Cargo Module** - Keep 50% wealth
+- **Thrusters** - -20% fuel use
 
-### Development
-- [[guides/development/setup|Development Setup]] - Contribute to the project
-- [[architecture/overview|Architecture Overview]] - Understand the codebase
-- [[references/api/index|API Reference]] - Technical documentation
+## 💾 Save System
 
-### Get Help
-- [[troubleshooting/index|Troubleshooting Guide]] - Common solutions
-- [GitHub Issues](https://github.com/cosmic-explorer/issues) - Report bugs
-- [Discord Community](#) - Chat with players
+### Save Slots
+- **Slot 0** - Auto-save (automatic)
+- **Slots 1-4** - Manual saves
+
+### When to Save
+- Before risky combat
+- After major purchases
+- When low on resources
+- Before exploring new regions
+
+## 🎯 Early Game Strategy
+
+### Turn 1-10: Foundation
+1. Navigate to find repair station
+2. Buy escape pod (priority!)
+3. Do easy combats for money
+4. Save frequently
+
+### Turn 11-25: Growth
+1. Upgrade to better ship
+2. Install combat mods
+3. Start trading items
+4. Explore new regions
+
+### Turn 26+: Expansion
+1. Get mining equipment
+2. Add pod augmentations
+3. Take on tougher enemies
+4. Aim for 10,000 wealth victory
+
+## ⚡ Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| N | Navigate |
+| I | Inventory |
+| F5 | Quick Save |
+| F9 | Quick Load |
+| ESC | Close Modal |
+| Enter | Confirm |
+
+## 🆘 Need Help?
+
+### Common Issues
+- **Out of Fuel** - Game over! Save often
+- **Ship Destroyed** - Need escape pod
+- **Can't Afford Repairs** - Trade or combat for money
+- **Inventory Full** - Sell items at trading posts
+
+### More Help
+- Check [[guides/troubleshooting/common-issues|Common Issues]]
+- Read [[guides/gameplay/basic-strategy|Basic Strategy]]
+- See [[references/game-mechanics|Game Mechanics]]
+
+## 🎮 Ready to Play!
+
+You now know enough to start your space adventure. Remember:
+1. **Save often** - Space is dangerous
+2. **Buy escape pod** - Insurance is worth it
+3. **Manage resources** - Don't run out of fuel
+4. **Have fun** - Experiment and explore!
+
+**Good luck, Space Explorer!** 🚀
 
 ---
 
-Parent: [[guides/getting-started/index|Getting Started]] | [[README|Documentation Hub]]
+Parent: [[guides/getting-started/index|Getting Started]] | [[guides/index|Guides]]
+Next: [[guides/gameplay/basic-strategy|Basic Strategy Guide]]

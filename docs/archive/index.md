@@ -1,121 +1,134 @@
 ---
-title: Documentation Archive Index
+title: Archive Index
 tags: [archive, index, history]
 created: 2025-06-10
 updated: 2025-06-10
 status: active
 ---
 
-# Documentation Archive Index
+# Archive Index
 
-This directory preserves the original documentation files from before the June 2025 reorganization. These files contain valuable historical context and development history.
+Historical documentation, development artifacts, and project evolution records.
 
-## Archive Structure
+## 📁 Archive Structure
 
-### 📊 Status Updates (`/status-updates/`)
-Historical progress reports and completion notifications
+### 🗓️ [[status-updates/index|Status Updates]]
+Project progress snapshots and milestone records:
+- Development status reports
+- Feature completion announcements
+- System state documentation
+- Refactoring outcomes
 
-| File | Original Name | Description |
-|------|---------------|-------------|
-| `2024-12-current-status.md` | CURRENT_STATUS_2024_12.md | December 2024 project status |
-| `2025-06-project-review.md` | PROJECT_REVIEW_JUNE_2025.md | Comprehensive June 2025 review |
-| `housekeeping-status.md` | HOUSEKEEPING_STATUS.md | Code cleanup status |
-| `housekeeping-complete.md` | HOUSEKEEPING_COMPLETE.md | Cleanup completion report |
-| `2025-06-housekeeping-complete.md` | HOUSEKEEPING_COMPLETE_JUNE_2025.md | June 2025 cleanup |
-| `refactoring-status.md` | REFACTORING_STATUS.md | Refactoring progress |
-| `refactoring-complete.md` | REFACTORING_COMPLETE.md | Refactoring completion |
-| `web-ui-complete.md` | WEB_UI_COMPLETE.md | Web UI implementation complete |
-| `pod-feature-complete.md` | POD_FEATURE_COMPLETE.md | Pod system completion |
-| `inventory-system-complete.md` | INVENTORY_SYSTEM_COMPLETE.md | Inventory implementation |
-| `save-load-complete.md` | SAVE_LOAD_COMPLETE.md | Save system completion |
+### 🐛 [[bug-fixes/index|Bug Fixes]]
+Historical record of issues and resolutions:
+- Modal system fixes
+- Save/load issues
+- Camera centering
+- UI layering problems
 
-### 🚀 Feature Documentation (`/feature-docs/`)
-Original feature implementation documentation
+### 📋 [[feature-docs/index|Feature Documentation]]
+Original implementation documentation:
+- Save/load system design
+- Pod augmentation mechanics
+- Music system implementation
+- Visual event system
 
-| File | Original Name | Description |
-|------|---------------|-------------|
-| `pod-augmentation-system.md` | POD_AUGMENTATION_SYSTEM.md | Pod augmentation details |
-| `food-consumption-implementation.md` | FOOD_CONSUMPTION_IMPLEMENTATION.md | Food/health system |
-| `music-system-implementation.md` | MUSIC_SYSTEM_IMPLEMENTATION.md | Procedural music engine |
-| `visual-event-system.md` | VISUAL_EVENT_SYSTEM.md | Visual effects system |
-| `save-load-system.md` | SAVE_LOAD_SYSTEM.md | Save/load implementation |
-| `pod-ui-improvements.md` | POD_UI_IMPROVEMENTS.md | Pod UI enhancements |
-| `fun-and-immersion-plan.md` | FUN_AND_IMMERSION_PLAN.md | Gameplay improvement plan |
-| `terminal-ui-deprecated.md` | TERMINAL_UI_DEPRECATED.md | Terminal UI deprecation |
+### 🏗️ [[original-architecture.md|Original Architecture]]
+Initial system design and structure before modularization.
 
-### 🐛 Bug Fixes (`/bug-fixes/`)
-Historical bug fix documentation
+## 📊 Archive Statistics
 
-| File | Original Name | Description |
-|------|---------------|-------------|
-| `2024-12-bug-fix-summary.md` | bug-fix-summary-2024-12.md | December 2024 fixes |
-| `modal-z-index-fix.md` | modal-z-index-fix.md | Modal layering solution |
-| `modal-exit-button-fix.md` | modal-exit-button-fix.md | Modal close button fix |
-| `camera-centering-fix.md` | CAMERA_CENTERING_FIX.md | Camera positioning fix |
-| `save-load-fixes.md` | SAVE_LOAD_FIXES.md | Save/load bug fixes |
-| `save-load-modal-fix.md` | SAVE_LOAD_MODAL_FIX.md | Save modal fixes |
-| `2025-06-save-overwrite-fix.md` | SAVE_OVERWRITE_FIX_JUNE_2025.md | Save overwrite bug |
+| Category | Count | Last Updated |
+|----------|-------|--------------|
+| Status Updates | 11 | 2025-06-10 |
+| Bug Fixes | 7 | 2025-06-10 |
+| Feature Docs | 8 | 2025-06-10 |
 
-### 📐 Original Architecture
-- `original-architecture.md` - The original ARCHITECTURE.md file
+## 🔍 Using the Archive
 
-## Using Archived Documentation
+### Finding Historical Information
+1. Browse by category above
+2. Use Obsidian search for keywords
+3. Check cross-references in current docs
 
-### Finding Information
-1. Use Obsidian search to find content across archives
-2. Check file descriptions above for context
-3. Look for `source:` references in current docs
+### Understanding Evolution
+- Status updates show project progression
+- Bug fixes reveal problem-solving approaches
+- Feature docs contain implementation details
 
-### When to Reference Archives
-- **Historical Context**: Understanding past decisions
-- **Bug History**: Seeing how issues were resolved
-- **Feature Evolution**: Tracking feature development
-- **Code Archaeology**: Finding removed functionality
+### Extracting for Current Use
+When updating current documentation:
+1. Reference archive for context
+2. Extract relevant information
+3. Update current docs
+4. Maintain archive link
 
-### Extraction Status
+## 📝 Archive Guidelines
 
-✅ **Extracted to Current Docs:**
-- Architecture overview → [[architecture/overview]]
-- Pod augmentation system → [[components/game-systems/pod-augmentations]]
-- Save/load system → [[components/game-systems/save-system]]
-- Modal fixes → [[guides/troubleshooting/modal-issues]]
+### What Belongs in Archive
+- Original chat logs and discussions
+- Superseded documentation
+- Historical implementation notes
+- Bug fix summaries
+- Development milestones
 
-🚧 **Pending Extraction:**
-- Music system implementation details
-- Visual event system specifications
-- Food consumption mechanics
-- Historical bug patterns
-
-## Archive Maintenance
-
-### Preservation Rules
-1. **Never delete** archived files
-2. **Never modify** content (read-only)
-3. **Always reference** when extracting
-4. **Document extractions** in current docs
+### What Doesn't Belong
+- Current documentation
+- Active guides
+- Reference materials
+- API documentation
 
 ### Adding to Archive
-When archiving new files:
-1. Use descriptive filenames (lowercase, hyphens)
-2. Preserve original content exactly
-3. Update this index with description
-4. Note extraction status
+1. Create descriptive filename
+2. Add proper frontmatter
+3. Include date and context
+4. Link from relevant index
 
-## Quick Reference
+## 🏷️ Common Archive Tags
 
-### Most Referenced Archives
-- [[2025-06-project-review]] - Latest comprehensive review
-- [[pod-augmentation-system]] - Complete pod system docs
-- [[modal-z-index-fix]] - Common UI issue solution
-- [[original-architecture]] - Initial system design
+- `#archive` - All archived content
+- `#historical` - Historical documentation
+- `#superseded` - Replaced documentation
+- `#bug-fix` - Bug fix records
+- `#milestone` - Project milestones
+- `#implementation` - Original implementations
 
-### Development Timeline
-- **2024-12**: Major refactoring and bug fixes
-- **2025-01**: Save system implementation
-- **2025-02**: Pod augmentation system
-- **2025-03**: Music and visual systems
-- **2025-06**: Documentation reorganization
+## 🔗 Quick Access
+
+### Recent Additions
+- [[status-updates/2025-06-housekeeping-complete|Housekeeping Complete]] - Latest cleanup
+- [[bug-fixes/2025-06-save-overwrite-fix|Save Overwrite Fix]] - Recent fix
+- [[feature-docs/visual-event-system|Visual Event System]] - Latest feature
+
+### Important Milestones
+- [[status-updates/web-ui-complete|Web UI Complete]] - Major transformation
+- [[status-updates/refactoring-complete|Refactoring Complete]] - Code modularization
+- [[feature-docs/pod-augmentation-system|Pod System]] - Key gameplay feature
+
+### Frequently Referenced
+- [[feature-docs/save-load-system|Save/Load Documentation]]
+- [[original-architecture|Original Architecture]]
+- [[status-updates/2025-06-project-review|Project Review]]
+
+## 📅 Archive Timeline
+
+### 2024-12
+- Initial development
+- Terminal to web transition
+- Basic features implementation
+
+### 2025-01
+- Save/load system
+- Pod augmentations
+- Music engine
+
+### 2025-06
+- Major refactoring
+- Bug fixes
+- Documentation overhaul
+- Current state achieved
 
 ---
 
 Parent: [[README|Documentation Hub]]
+Related: [[guides/index|Guides]] | [[components/index|Components]]
