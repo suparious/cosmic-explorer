@@ -126,6 +126,17 @@ class SocketHandler {
                             const type = msg.includes('damage') || msg.includes('Hit') ? 'damage' : 
                                        msg.includes('Missed') || msg.includes('evade') ? 'normal' : 'success';
                             combatUI.addLogEntry(msg, type);
+                            
+                            // Play weapon sound when player attacks
+                            if (msg.includes('You attack') || msg.includes('You fire') || msg.includes('Your attack')) {
+                                const weaponType = this.gameEngine.effectsManager.determineWeaponType(this.gameEngine.gameState);
+                                this.gameEngine.audioManager.playWeaponSound(weaponType);
+                            }
+                            
+                            // Play explosion sound when enemy is destroyed
+                            if (msg.includes('destroyed') || msg.includes('explodes')) {
+                                this.gameEngine.audioManager.playExplosionSound();
+                            }
                         });
                     }
                 }
@@ -245,7 +256,31 @@ class EffectsManager {
                 // Center camera on damage event
                 renderer.centerCameraOn(renderer.ship.x, renderer.ship.y);
                 break;
+                
+            case 'item_sold':
+                audioManager.playSellSound();
+                break;
         }
+    }
+    
+    // Determine weapon type from game state
+    determineWeaponType(gameState) {
+        if (!gameState || !gameState.player_stats) return 'laser_cannon';
+        
+        const shipMods = gameState.player_stats.ship_mods || {};
+        const highSlotMods = shipMods.high || [];
+        
+        // Check for specific weapon mods in high slots
+        if (highSlotMods.includes('missile_launcher')) {
+            return 'missile_launcher';
+        } else if (highSlotMods.includes('railgun')) {
+            return 'precise_shot';
+        } else if (highSlotMods.includes('autocannon')) {
+            return 'barrage';
+        }
+        
+        // Default to laser cannon
+        return 'laser_cannon';
     }
     
     createWarpEffect() {
@@ -612,7 +647,7 @@ class GameEngine {
     mine() {
         this.sendAction('mine');
         // Play mining sound effect
-        this.audioManager.playSound('scan'); // Using scan sound for now
+        this.audioManager.playMiningSound();
         // Add visual effect
         const ship = this.renderer.ship;
         if (ship) {

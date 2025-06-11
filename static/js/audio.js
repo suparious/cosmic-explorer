@@ -1,6 +1,9 @@
 // Audio Manager for Cosmic Explorer
 class AudioManager {
     constructor() {
+        // Create a single shared AudioContext
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
         this.sounds = {};
         this.music = null;
         this.musicEngine = null;
@@ -8,6 +11,11 @@ class AudioManager {
         this.sfxVolume = GameConfig.audio.sfxVolume;
         this.masterVolume = GameConfig.audio.masterVolume;
         this.currentMusicTrack = 'exploration';
+        
+        // Create master gain node for all sound effects
+        this.masterGainNode = this.audioContext.createGain();
+        this.masterGainNode.connect(this.audioContext.destination);
+        this.masterGainNode.gain.value = this.masterVolume;
         
         this.init();
     }
@@ -25,6 +33,18 @@ class AudioManager {
         // Update music engine volume
         if (this.musicEngine) {
             this.musicEngine.setVolume(this.musicVolume * this.masterVolume);
+        }
+        
+        // Update master gain node
+        if (this.masterGainNode) {
+            this.masterGainNode.gain.value = this.masterVolume;
+        }
+    }
+    
+    // Helper method to ensure audio context is resumed
+    ensureAudioContextResumed() {
+        if (this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
         }
     }
     
@@ -119,21 +139,25 @@ class AudioManager {
     
     // Create dynamic sound effects
     createDynamicSound(frequency, duration, type = 'sine') {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
+        // Resume context if suspended
+        if (this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+        }
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
         
         oscillator.type = type;
-        oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
         
-        gainNode.gain.setValueAtTime(this.sfxVolume * this.masterVolume, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+        gainNode.gain.setValueAtTime(this.sfxVolume, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
         
         oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+        gainNode.connect(this.masterGainNode);
         
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + duration);
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + duration);
     }
     
     // Play weapon sounds based on weapon type
@@ -169,60 +193,64 @@ class AudioManager {
     
     // UI click sounds
     playUIClick() {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
+        if (this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+        }
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
         
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-        oscillator.frequency.linearRampToValueAtTime(600, audioContext.currentTime + 0.03);
+        oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
+        oscillator.frequency.linearRampToValueAtTime(600, this.audioContext.currentTime + 0.03);
         
-        gainNode.gain.setValueAtTime(this.sfxVolume * this.masterVolume * 0.1, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.03);
+        gainNode.gain.setValueAtTime(this.sfxVolume * 0.1, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.03);
         
         oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+        gainNode.connect(this.masterGainNode);
         
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.03);
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + 0.03);
     }
     
     // Warning sounds with different severities
     playWarning(severity = 'low') {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
+        this.ensureAudioContextResumed();
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
         
         switch(severity) {
             case 'critical':
                 // Urgent alarm
                 oscillator.type = 'square';
-                oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
-                oscillator.frequency.setValueAtTime(440, audioContext.currentTime + 0.15);
-                oscillator.frequency.setValueAtTime(880, audioContext.currentTime + 0.3);
-                gainNode.gain.setValueAtTime(this.sfxVolume * this.masterVolume * 0.5, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(880, this.audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(440, this.audioContext.currentTime + 0.15);
+                oscillator.frequency.setValueAtTime(880, this.audioContext.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(this.sfxVolume * 0.5, this.audioContext.currentTime);
                 break;
             case 'high':
                 // Strong warning
                 oscillator.type = 'sawtooth';
-                oscillator.frequency.setValueAtTime(660, audioContext.currentTime);
-                oscillator.frequency.linearRampToValueAtTime(440, audioContext.currentTime + 0.2);
-                gainNode.gain.setValueAtTime(this.sfxVolume * this.masterVolume * 0.4, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(660, this.audioContext.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(440, this.audioContext.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(this.sfxVolume * 0.4, this.audioContext.currentTime);
                 break;
             default:
                 // Low priority alert
                 oscillator.type = 'triangle';
-                oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
-                gainNode.gain.setValueAtTime(this.sfxVolume * this.masterVolume * 0.2, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(440, this.audioContext.currentTime);
+                gainNode.gain.setValueAtTime(this.sfxVolume * 0.2, this.audioContext.currentTime);
         }
         
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
         
         oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+        gainNode.connect(this.masterGainNode);
         
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + 0.5);
     }
     
     // Specific dynamic sound effects
@@ -231,9 +259,10 @@ class AudioManager {
     }
     
     playExplosionSound() {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const bufferSize = audioContext.sampleRate * 0.5; // 0.5 second
-        const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+        this.ensureAudioContextResumed();
+        
+        const bufferSize = this.audioContext.sampleRate * 0.5; // 0.5 second
+        const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
         const data = buffer.getChannelData(0);
         
         // Generate white noise
@@ -241,21 +270,21 @@ class AudioManager {
             data[i] = (Math.random() * 2 - 1) * Math.exp(-i / bufferSize * 5);
         }
         
-        const source = audioContext.createBufferSource();
-        const gainNode = audioContext.createGain();
-        const filter = audioContext.createBiquadFilter();
+        const source = this.audioContext.createBufferSource();
+        const gainNode = this.audioContext.createGain();
+        const filter = this.audioContext.createBiquadFilter();
         
         source.buffer = buffer;
         filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(1000, audioContext.currentTime);
-        filter.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.5);
+        filter.frequency.setValueAtTime(1000, this.audioContext.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(100, this.audioContext.currentTime + 0.5);
         
-        gainNode.gain.setValueAtTime(this.sfxVolume * this.masterVolume, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        gainNode.gain.setValueAtTime(this.sfxVolume, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
         
         source.connect(filter);
         filter.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+        gainNode.connect(this.masterGainNode);
         
         source.start();
     }
@@ -663,36 +692,112 @@ class AudioManager {
     
     // Docking sound
     playDockingSound() {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
+        this.ensureAudioContextResumed();
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
         
         // Mechanical clunk
         oscillator.type = 'sawtooth';
-        oscillator.frequency.setValueAtTime(80, audioContext.currentTime);
-        oscillator.frequency.linearRampToValueAtTime(40, audioContext.currentTime + 0.2);
+        oscillator.frequency.setValueAtTime(80, this.audioContext.currentTime);
+        oscillator.frequency.linearRampToValueAtTime(40, this.audioContext.currentTime + 0.2);
         
         // Add metallic resonance
-        const resonance = audioContext.createOscillator();
+        const resonance = this.audioContext.createOscillator();
         resonance.type = 'triangle';
-        resonance.frequency.setValueAtTime(240, audioContext.currentTime);
+        resonance.frequency.setValueAtTime(240, this.audioContext.currentTime);
         
-        const resonanceGain = audioContext.createGain();
-        resonanceGain.gain.setValueAtTime(this.sfxVolume * this.masterVolume * 0.1, audioContext.currentTime);
-        resonanceGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        const resonanceGain = this.audioContext.createGain();
+        resonanceGain.gain.setValueAtTime(this.sfxVolume * 0.1, this.audioContext.currentTime);
+        resonanceGain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
         
-        gainNode.gain.setValueAtTime(this.sfxVolume * this.masterVolume * 0.4, audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.2);
+        gainNode.gain.setValueAtTime(this.sfxVolume * 0.4, this.audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + 0.2);
         
         oscillator.connect(gainNode);
         resonance.connect(resonanceGain);
-        gainNode.connect(audioContext.destination);
-        resonanceGain.connect(audioContext.destination);
+        gainNode.connect(this.masterGainNode);
+        resonanceGain.connect(this.masterGainNode);
         
-        oscillator.start(audioContext.currentTime);
-        resonance.start(audioContext.currentTime + 0.1);
-        oscillator.stop(audioContext.currentTime + 0.2);
-        resonance.stop(audioContext.currentTime + 0.4);
+        oscillator.start(this.audioContext.currentTime);
+        resonance.start(this.audioContext.currentTime + 0.1);
+        oscillator.stop(this.audioContext.currentTime + 0.2);
+        resonance.stop(this.audioContext.currentTime + 0.4);
+    }
+    
+    // Mining sound - industrial drilling with modulation
+    playMiningSound() {
+        this.ensureAudioContextResumed();
+        
+        // Create multiple oscillators for rich drilling sound
+        const fundamental = this.audioContext.createOscillator();
+        const harmonic1 = this.audioContext.createOscillator();
+        const harmonic2 = this.audioContext.createOscillator();
+        
+        fundamental.type = 'sawtooth';
+        harmonic1.type = 'square';
+        harmonic2.type = 'triangle';
+        
+        const baseFreq = 120;
+        fundamental.frequency.setValueAtTime(baseFreq, this.audioContext.currentTime);
+        harmonic1.frequency.setValueAtTime(baseFreq * 2.1, this.audioContext.currentTime);
+        harmonic2.frequency.setValueAtTime(baseFreq * 3.3, this.audioContext.currentTime);
+        
+        // Create modulation for grinding effect
+        const modulator = this.audioContext.createOscillator();
+        const modGain = this.audioContext.createGain();
+        modulator.frequency.setValueAtTime(15, this.audioContext.currentTime);
+        modGain.gain.setValueAtTime(20, this.audioContext.currentTime);
+        
+        modulator.connect(modGain);
+        modGain.connect(fundamental.frequency);
+        modGain.connect(harmonic1.frequency);
+        
+        // Mix the oscillators
+        const mixer = this.audioContext.createGain();
+        const gain1 = this.audioContext.createGain();
+        const gain2 = this.audioContext.createGain();
+        const gain3 = this.audioContext.createGain();
+        
+        gain1.gain.setValueAtTime(0.4, this.audioContext.currentTime);
+        gain2.gain.setValueAtTime(0.2, this.audioContext.currentTime);
+        gain3.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+        
+        fundamental.connect(gain1);
+        harmonic1.connect(gain2);
+        harmonic2.connect(gain3);
+        
+        gain1.connect(mixer);
+        gain2.connect(mixer);
+        gain3.connect(mixer);
+        
+        // Add filter for metallic sound
+        const filter = this.audioContext.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(500, this.audioContext.currentTime);
+        filter.Q.setValueAtTime(5, this.audioContext.currentTime);
+        
+        // Envelope
+        mixer.gain.setValueAtTime(this.sfxVolume * 0.3, this.audioContext.currentTime);
+        mixer.gain.linearRampToValueAtTime(this.sfxVolume * 0.5, this.audioContext.currentTime + 0.1);
+        mixer.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 1.5);
+        
+        mixer.connect(filter);
+        filter.connect(this.masterGainNode);
+        
+        // Start all oscillators
+        const now = this.audioContext.currentTime;
+        fundamental.start(now);
+        harmonic1.start(now);
+        harmonic2.start(now);
+        modulator.start(now);
+        
+        // Stop after duration
+        const stopTime = now + 1.5;
+        fundamental.stop(stopTime);
+        harmonic1.stop(stopTime);
+        harmonic2.stop(stopTime);
+        modulator.stop(stopTime);
     }
 
 }
