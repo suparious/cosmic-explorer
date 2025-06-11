@@ -89,16 +89,18 @@ static/js/
 ### Audio Components
 
 #### [[audio-system|Audio System]] (audio.js)
-- Sound effect playback
-- Volume control
-- Audio pooling
-- 3D positioning
+- 20+ procedural sound effects
+- Weapon-specific combat sounds
+- Dynamic item pickup sounds
+- UI interaction feedback
+- Warning and alert systems
 
-#### [[music-engine|Music Engine]] (musicEngine.js)
-- Procedural generation
-- Dynamic adaptation
-- Mood-based selection
-- Seamless transitions
+#### [[music-system|Music System]] (musicEngine.js)
+- 5 dynamic music tracks
+- 12-15 layers per track
+- Real-time procedural generation
+- Game state-responsive adaptation
+- Advanced effects processing
 
 ### Networking
 
@@ -178,10 +180,11 @@ showModal({
 - **Music** - Dynamic soundtrack
 
 ### Music System
-- Procedural generation
-- Context-aware adaptation
-- Smooth transitions
-- Performance optimized
+- 5 procedurally generated tracks
+- 23 unique layer types
+- 8-chord progressions with extensions
+- Professional effects chain
+- Real-time game state adaptation
 
 ## 🔌 Network Communication
 

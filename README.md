@@ -15,12 +15,19 @@ A stunning space exploration game transformed from ASCII terminal graphics to a 
 
 ### Audio System
 
-- **100% Procedurally Generated** - No sound files needed!
-- Dynamic sound effects for all actions (20+ effects)
-- Atmospheric space ambience music (5 dynamic tracks)
-- Real-time audio synthesis using Web Audio API
-- Volume controls for music, SFX, and master
-- See `/static/sounds/README.md` for implementation details
+#### 🎵 Procedural Music Engine
+- **5 Dynamic Tracks**: Exploration, Station, Danger, Combat, Pod Emergency
+- **12-15 Layers Per Track**: Deep drones, arpeggios, percussion, atmospheric effects
+- **Advanced Music Theory**: 8-chord progressions with 9ths, 11ths, and 13ths
+- **Professional Effects**: Reverb, delay, compression, stereo widening
+- **Real-time Adaptation**: Music responds to health, location, combat state
+
+#### 🔊 Sound Effects System  
+- **20+ Procedural Effects**: All generated in real-time, no files needed!
+- **Contextual Sounds**: Different weapons, item rarities, UI interactions
+- **Dynamic Warnings**: Low fuel, health critical, system alerts
+- **Environmental Audio**: Docking, mining, scanning sounds
+- **100% Web Audio API**: No external dependencies
 
 ### Gameplay Features
 

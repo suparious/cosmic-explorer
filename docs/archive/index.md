@@ -40,9 +40,9 @@ Initial system design and structure before modularization.
 
 | Category | Count | Last Updated |
 |----------|-------|--------------|
-| Status Updates | 11 | 2025-06-10 |
+| Status Updates | 15 | 2025-06-11 |
 | Bug Fixes | 7 | 2025-06-10 |
-| Feature Docs | 8 | 2025-06-10 |
+| Feature Docs | 11 | 2025-06-11 |
 
 ## 🔍 Using the Archive
 
@@ -96,9 +96,11 @@ When updating current documentation:
 ## 🔗 Quick Access
 
 ### Recent Additions
-- [[status-updates/2025-06-housekeeping-complete|Housekeeping Complete]] - Latest cleanup
-- [[bug-fixes/2025-06-save-overwrite-fix|Save Overwrite Fix]] - Recent fix
-- [[feature-docs/visual-event-system|Visual Event System]] - Latest feature
+- [[status-updates/2025-01-sound-system-improvements|Sound System Improvements]] - Audio enhancements
+- [[status-updates/2025-01-music-implementation-complete|Music Implementation Complete]] - Music system finalized
+- [[feature-docs/2025-01-music-enhancements|Music Enhancements]] - Detailed music features
+- [[feature-docs/music-system-testing-guide|Music Testing Guide]] - Testing procedures
+- [[feature-docs/sound-system-enhancement-guide|Sound Enhancement Guide]] - Sound implementation
 
 ### Important Milestones
 - [[status-updates/web-ui-complete|Web UI Complete]] - Major transformation
@@ -121,6 +123,11 @@ When updating current documentation:
 - Save/load system
 - Pod augmentations
 - Music engine
+
+### 2025-01
+- Music system enhancements
+- Sound effects implementation
+- Audio system completion
 
 ### 2025-06
 - Major refactoring

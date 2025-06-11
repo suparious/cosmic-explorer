@@ -29,13 +29,15 @@ Step-by-step guides for developers and players
 Technical documentation for system components
 - [[components/backend/index|Backend Systems]] - Python game engine and API
 - [[components/frontend/index|Frontend Architecture]] - JavaScript UI and rendering
+- [[components/frontend/audio-system|Audio System]] - Procedural sound effects
+- [[components/frontend/music-system|Music System]] - Dynamic music engine
 - [[components/game-systems/index|Game Systems]] - Core gameplay mechanics
 
 ### 📋 [[References]]
 API documentation and technical references
 - [[references/api/index|API Reference]] - REST and WebSocket endpoints
-- [[references/game-mechanics|Game Mechanics]] - Detailed gameplay systems
-- [[references/glossary|Glossary]] - Terms and definitions
+- [[references/project-analysis|Project Analysis]] - Implementation vs documentation
+- [[references/development-priorities|Development Priorities]] - Next steps for maximum fun
 - [[references/roadmap|Development Roadmap]] - Future features and plans
 
 ### 🗄️ [[Archive]]
@@ -68,7 +70,8 @@ Historical documentation and status updates
 | Game Engine | ✅ Active | [[components/backend/game-engine]] |
 | Save System | ✅ Working | [[components/game-systems/save-system]] |
 | Pod System | ✅ Complete | [[components/game-systems/pod-augmentations]] |
-| Music Engine | ✅ Implemented | [[components/frontend/audio-system]] |
+| Music Engine | ✅ Implemented | [[components/frontend/music-system]] |
+| Sound Effects | ✅ Complete | [[components/frontend/audio-system]] |
 | Star Map | 🚧 Partial | [[components/frontend/star-map]] |
 | Multiplayer | ❌ Planned | [[references/roadmap#multiplayer]] |
 
