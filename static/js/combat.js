@@ -493,6 +493,20 @@ class CombatUI {
         // Show attack animation
         this.playAttackAnimation('player');
         
+        // Trigger visual attack effect on renderer
+        if (window.gameEngine && window.gameEngine.renderer) {
+            const renderer = window.gameEngine.renderer;
+            // Find the first enemy
+            const enemy = renderer.enemies[0];
+            if (enemy) {
+                renderer.firePlayerProjectile(enemy.x, enemy.y);
+                // Add attack sound
+                if (window.gameEngine.audioManager) {
+                    window.gameEngine.audioManager.playSound('laser');
+                }
+            }
+        }
+        
         // Send action to server
         if (window.gameEngine) {
             window.gameEngine.sendAction('combat_action', { combat_action: actionId });

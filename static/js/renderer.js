@@ -16,6 +16,11 @@ class Renderer {
         this.stations = [];
         this.asteroids = [];
         this.particles = [];
+        this.enemies = [];
+        this.merchants = [];
+        this.projectiles = [];
+        this.damageNumbers = [];
+        this.visualEvents = [];
         
         // Current region theme
         this.currentRegion = null;
@@ -184,8 +189,12 @@ class Renderer {
         this.renderStations();
         this.renderAsteroids();
         this.renderRegionEffects();
+        this.renderEnemies();
+        this.renderMerchants();
         this.renderShip();
+        this.renderProjectiles();
         this.renderParticles();
+        this.renderVisualEvents();
         
         // Restore context
         this.ctx.restore();
@@ -194,6 +203,7 @@ class Renderer {
         this.renderScanEffect();
         this.renderScreenFlash();
         this.renderDamageOverlay(gameState);
+        this.renderDamageNumbers();
     }
     
     renderStars() {
@@ -843,6 +853,790 @@ class Renderer {
             rotation: 0,
             rotationSpeed: (Math.random() - 0.5) * 0.02
         });
+    }
+    
+    renderEnemies() {
+        // Remove enemies marked for removal
+        this.enemies = this.enemies.filter(enemy => !enemy.toRemove);
+        
+        this.enemies.forEach(enemy => {
+            // Update enemy AI
+            this.updateEnemyAI(enemy);
+            
+            this.ctx.save();
+            this.ctx.translate(enemy.x, enemy.y);
+            this.ctx.rotate(enemy.angle);
+            
+            // Draw enemy based on type
+            switch(enemy.type) {
+                case 'pirate':
+                    this.drawPirateShip(enemy);
+                    break;
+                case 'alien':
+                    this.drawAlienShip(enemy);
+                    break;
+                case 'rogue_ai':
+                    this.drawRogueAIShip(enemy);
+                    break;
+                default:
+                    this.drawGenericEnemy(enemy);
+            }
+            
+            // Draw health bar
+            if (enemy.showHealthBar) {
+                this.ctx.restore();
+                this.ctx.save();
+                this.ctx.translate(enemy.x, enemy.y - 40);
+                this.drawHealthBar(enemy.hp, enemy.maxHp, 40, 6);
+            }
+            
+            this.ctx.restore();
+        });
+    }
+    
+    renderMerchants() {
+        // Remove merchants marked for removal
+        this.merchants = this.merchants.filter(merchant => !merchant.toRemove);
+        
+        this.merchants.forEach(merchant => {
+            // Update merchant movement
+            if (merchant.docking) {
+                this.updateMerchantDocking(merchant);
+            } else {
+                this.updateMerchantMovement(merchant);
+            }
+            
+            this.ctx.save();
+            this.ctx.translate(merchant.x, merchant.y);
+            this.ctx.rotate(merchant.angle);
+            
+            // Draw merchant ship
+            this.drawMerchantShip(merchant);
+            
+            this.ctx.restore();
+            
+            // Draw trade indicator
+            if (merchant.showTradeIndicator) {
+                this.ctx.save();
+                this.ctx.translate(merchant.x, merchant.y - 35);
+                this.ctx.fillStyle = '#FFD700';
+                this.ctx.font = '20px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('💰', 0, 0);
+                this.ctx.restore();
+            }
+        });
+    }
+    
+    renderProjectiles() {
+        this.projectiles = this.projectiles.filter(projectile => {
+            // Update position
+            projectile.x += projectile.vx;
+            projectile.y += projectile.vy;
+            projectile.life--;
+            
+            if (projectile.life <= 0) return false;
+            
+            // Draw projectile based on type
+            this.ctx.save();
+            
+            switch(projectile.type) {
+                case 'laser':
+                    // Laser beam effect
+                    const gradient = this.ctx.createLinearGradient(
+                        projectile.x - projectile.vx * 10,
+                        projectile.y - projectile.vy * 10,
+                        projectile.x,
+                        projectile.y
+                    );
+                    gradient.addColorStop(0, 'rgba(255, 0, 0, 0)');
+                    gradient.addColorStop(1, projectile.color || 'rgba(255, 0, 0, 0.8)');
+                    
+                    this.ctx.strokeStyle = gradient;
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(projectile.x - projectile.vx * 10, projectile.y - projectile.vy * 10);
+                    this.ctx.lineTo(projectile.x, projectile.y);
+                    this.ctx.stroke();
+                    break;
+                    
+                case 'plasma':
+                    // Plasma bolt
+                    const plasmaGlow = this.ctx.createRadialGradient(
+                        projectile.x, projectile.y, 0,
+                        projectile.x, projectile.y, 8
+                    );
+                    plasmaGlow.addColorStop(0, projectile.color || 'rgba(0, 255, 255, 0.8)');
+                    plasmaGlow.addColorStop(1, 'rgba(0, 255, 255, 0)');
+                    
+                    this.ctx.fillStyle = plasmaGlow;
+                    this.ctx.beginPath();
+                    this.ctx.arc(projectile.x, projectile.y, 8, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    break;
+                    
+                default:
+                    // Generic projectile
+                    this.ctx.fillStyle = projectile.color || '#FFFF00';
+                    this.ctx.beginPath();
+                    this.ctx.arc(projectile.x, projectile.y, 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+            }
+            
+            this.ctx.restore();
+            return true;
+        });
+    }
+    
+    renderDamageNumbers() {
+        this.damageNumbers = this.damageNumbers.filter(dmg => {
+            dmg.y -= dmg.vy;
+            dmg.vy *= 0.95;
+            dmg.life--;
+            
+            if (dmg.life <= 0) return false;
+            
+            const alpha = dmg.life / dmg.maxLife;
+            
+            // Convert world coordinates to screen coordinates
+            const screenX = (dmg.x - this.camera.x) * this.camera.zoom + this.width / 2;
+            const screenY = (dmg.y - this.camera.y) * this.camera.zoom + this.height / 2;
+            
+            this.ctx.save();
+            this.ctx.font = `bold ${20 * this.camera.zoom}px Orbitron`;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            
+            // Shadow for readability
+            this.ctx.fillStyle = `rgba(0, 0, 0, ${alpha * 0.8})`;
+            this.ctx.fillText(dmg.text, screenX + 2, screenY + 2);
+            
+            // Damage text
+            this.ctx.fillStyle = dmg.color || `rgba(255, 100, 100, ${alpha})`;
+            this.ctx.fillText(dmg.text, screenX, screenY);
+            
+            this.ctx.restore();
+            return true;
+        });
+    }
+    
+    renderVisualEvents() {
+        this.visualEvents = this.visualEvents.filter(event => {
+            event.duration--;
+            
+            if (event.duration <= 0) return false;
+            
+            switch(event.type) {
+                case 'warning':
+                    // Flashing warning indicator
+                    if (Math.floor(event.duration / 10) % 2 === 0) {
+                        this.ctx.save();
+                        this.ctx.translate(event.x, event.y);
+                        this.ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                        this.ctx.font = 'bold 30px Arial';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.fillText('⚠️', 0, 0);
+                        this.ctx.restore();
+                    }
+                    break;
+                    
+                case 'trade':
+                    // Trade completed indicator
+                    this.ctx.save();
+                    this.ctx.translate(event.x, event.y - event.duration);
+                    this.ctx.globalAlpha = event.duration / event.maxDuration;
+                    this.ctx.fillStyle = '#FFD700';
+                    this.ctx.font = '24px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText('💰 +' + event.value, 0, 0);
+                    this.ctx.restore();
+                    break;
+                    
+                case 'salvage':
+                    // Salvage indicator
+                    this.ctx.save();
+                    this.ctx.translate(event.x, event.y);
+                    this.ctx.rotate(event.duration * 0.05);
+                    this.ctx.fillStyle = '#FFA500';
+                    this.ctx.font = '20px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText('🔧', 0, 0);
+                    this.ctx.restore();
+                    break;
+            }
+            
+            return true;
+        });
+    }
+    
+    // Enemy ship drawing methods
+    drawPirateShip(enemy) {
+        const size = enemy.size || 25;
+        
+        // Main body - aggressive angular design
+        this.ctx.fillStyle = enemy.damaged ? '#8B0000' : '#DC143C';
+        this.ctx.strokeStyle = '#FF0000';
+        this.ctx.lineWidth = 2;
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(size, 0);
+        this.ctx.lineTo(size * 0.3, -size * 0.8);
+        this.ctx.lineTo(-size * 0.5, -size * 0.6);
+        this.ctx.lineTo(-size * 0.8, -size * 0.2);
+        this.ctx.lineTo(-size * 0.8, size * 0.2);
+        this.ctx.lineTo(-size * 0.5, size * 0.6);
+        this.ctx.lineTo(size * 0.3, size * 0.8);
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.stroke();
+        
+        // Spikes
+        this.ctx.fillStyle = '#8B0000';
+        for (let i = 0; i < 3; i++) {
+            const angle = (i - 1) * 0.5;
+            this.ctx.save();
+            this.ctx.rotate(angle);
+            this.ctx.beginPath();
+            this.ctx.moveTo(size, 0);
+            this.ctx.lineTo(size * 1.3, -size * 0.1);
+            this.ctx.lineTo(size * 1.3, size * 0.1);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.restore();
+        }
+        
+        // Engine glow
+        const engineGlow = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+        this.ctx.fillStyle = `rgba(255, 100, 0, ${engineGlow})`;
+        this.ctx.beginPath();
+        this.ctx.arc(-size * 0.7, 0, size * 0.3, 0, Math.PI * 2);
+        this.ctx.fill();
+    }
+    
+    drawAlienShip(enemy) {
+        const size = enemy.size || 25;
+        const time = Date.now() * 0.001;
+        
+        // Organic, curved design
+        this.ctx.fillStyle = enemy.damaged ? '#2F4F2F' : '#32CD32';
+        this.ctx.strokeStyle = '#00FF00';
+        this.ctx.lineWidth = 2;
+        
+        // Main body with curves
+        this.ctx.beginPath();
+        this.ctx.moveTo(size * 0.8, 0);
+        this.ctx.quadraticCurveTo(size * 0.6, -size * 0.6, 0, -size * 0.8);
+        this.ctx.quadraticCurveTo(-size * 0.6, -size * 0.6, -size * 0.8, 0);
+        this.ctx.quadraticCurveTo(-size * 0.6, size * 0.6, 0, size * 0.8);
+        this.ctx.quadraticCurveTo(size * 0.6, size * 0.6, size * 0.8, 0);
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.stroke();
+        
+        // Bio-luminescent spots
+        for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2 + time;
+            const x = Math.cos(angle) * size * 0.5;
+            const y = Math.sin(angle) * size * 0.5;
+            const glowSize = 3 + Math.sin(time * 3 + i) * 1;
+            
+            this.ctx.fillStyle = `rgba(0, 255, 0, ${0.6 + Math.sin(time * 2 + i) * 0.2})`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, glowSize, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+        
+        // Central eye
+        this.ctx.fillStyle = '#9400D3';
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, size * 0.2, 0, Math.PI * 2);
+        this.ctx.fill();
+    }
+    
+    drawRogueAIShip(enemy) {
+        const size = enemy.size || 25;
+        const time = Date.now() * 0.001;
+        
+        // Geometric, high-tech design
+        this.ctx.fillStyle = enemy.damaged ? '#191970' : '#0000CD';
+        this.ctx.strokeStyle = '#00FFFF';
+        this.ctx.lineWidth = 2;
+        
+        // Hexagonal main body
+        this.ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            const x = Math.cos(angle) * size;
+            const y = Math.sin(angle) * size;
+            if (i === 0) {
+                this.ctx.moveTo(x, y);
+            } else {
+                this.ctx.lineTo(x, y);
+            }
+        }
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.stroke();
+        
+        // Energy core
+        const coreGlow = this.ctx.createRadialGradient(0, 0, 0, 0, 0, size * 0.4);
+        coreGlow.addColorStop(0, 'rgba(0, 255, 255, 0.8)');
+        coreGlow.addColorStop(1, 'rgba(0, 100, 255, 0.2)');
+        this.ctx.fillStyle = coreGlow;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, size * 0.4, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Rotating energy rings
+        this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)';
+        this.ctx.lineWidth = 1;
+        for (let i = 0; i < 3; i++) {
+            this.ctx.save();
+            this.ctx.rotate(time * (i + 1) * 0.5);
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, size * (0.6 + i * 0.2), 0, Math.PI * 2);
+            this.ctx.stroke();
+            this.ctx.restore();
+        }
+    }
+    
+    drawGenericEnemy(enemy) {
+        const size = enemy.size || 20;
+        
+        // Simple triangle enemy
+        this.ctx.fillStyle = enemy.damaged ? '#8B4513' : '#FF6347';
+        this.ctx.strokeStyle = '#FF0000';
+        this.ctx.lineWidth = 2;
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(size, 0);
+        this.ctx.lineTo(-size * 0.7, -size * 0.7);
+        this.ctx.lineTo(-size * 0.5, 0);
+        this.ctx.lineTo(-size * 0.7, size * 0.7);
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.stroke();
+    }
+    
+    drawMerchantShip(merchant) {
+        const size = merchant.size || 30;
+        
+        // Bulky cargo design
+        this.ctx.fillStyle = '#DAA520';
+        this.ctx.strokeStyle = '#FFD700';
+        this.ctx.lineWidth = 2;
+        
+        // Main cargo hold
+        this.ctx.fillRect(-size * 0.8, -size * 0.6, size * 1.6, size * 1.2);
+        this.ctx.strokeRect(-size * 0.8, -size * 0.6, size * 1.6, size * 1.2);
+        
+        // Cockpit
+        this.ctx.fillStyle = '#FFA500';
+        this.ctx.beginPath();
+        this.ctx.moveTo(size * 0.8, 0);
+        this.ctx.lineTo(size * 1.2, -size * 0.3);
+        this.ctx.lineTo(size * 1.2, size * 0.3);
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // Cargo containers
+        this.ctx.fillStyle = '#8B7355';
+        for (let i = 0; i < 3; i++) {
+            const y = (i - 1) * size * 0.4;
+            this.ctx.fillRect(-size * 0.6, y - size * 0.15, size * 0.3, size * 0.3);
+            this.ctx.fillRect(-size * 0.2, y - size * 0.15, size * 0.3, size * 0.3);
+        }
+        
+        // Engine glow
+        this.ctx.fillStyle = 'rgba(255, 200, 0, 0.6)';
+        this.ctx.beginPath();
+        this.ctx.arc(-size * 0.9, -size * 0.3, size * 0.2, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.beginPath();
+        this.ctx.arc(-size * 0.9, size * 0.3, size * 0.2, 0, Math.PI * 2);
+        this.ctx.fill();
+    }
+    
+    drawHealthBar(hp, maxHp, width, height) {
+        const percentage = Math.max(0, hp / maxHp);
+        
+        // Background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.ctx.fillRect(-width/2, -height/2, width, height);
+        
+        // Health fill
+        let healthColor;
+        if (percentage > 0.6) {
+            healthColor = '#00FF00';
+        } else if (percentage > 0.3) {
+            healthColor = '#FFFF00';
+        } else {
+            healthColor = '#FF0000';
+        }
+        
+        this.ctx.fillStyle = healthColor;
+        this.ctx.fillRect(-width/2, -height/2, width * percentage, height);
+        
+        // Border
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(-width/2, -height/2, width, height);
+    }
+    
+    // AI and movement methods
+    updateEnemyAI(enemy) {
+        if (!enemy.ai) return;
+        
+        switch(enemy.ai.state) {
+            case 'approach':
+                // Move towards player
+                const dx = this.ship.x - enemy.x;
+                const dy = this.ship.y - enemy.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > enemy.ai.attackRange) {
+                    enemy.angle = Math.atan2(dy, dx);
+                    enemy.x += Math.cos(enemy.angle) * enemy.speed;
+                    enemy.y += Math.sin(enemy.angle) * enemy.speed;
+                } else {
+                    enemy.ai.state = 'attack';
+                }
+                break;
+                
+            case 'attack':
+                // Face player and attack
+                const adx = this.ship.x - enemy.x;
+                const ady = this.ship.y - enemy.y;
+                enemy.angle = Math.atan2(ady, adx);
+                
+                // Fire projectile
+                if (!enemy.ai.cooldown || enemy.ai.cooldown <= 0) {
+                    this.fireEnemyProjectile(enemy);
+                    enemy.ai.cooldown = enemy.ai.attackCooldown || 60;
+                }
+                
+                if (enemy.ai.cooldown > 0) {
+                    enemy.ai.cooldown--;
+                }
+                break;
+                
+            case 'flee':
+                // Move away from player
+                const fdx = enemy.x - this.ship.x;
+                const fdy = enemy.y - this.ship.y;
+                enemy.angle = Math.atan2(fdy, fdx);
+                enemy.x += Math.cos(enemy.angle) * enemy.speed * 1.5;
+                enemy.y += Math.sin(enemy.angle) * enemy.speed * 1.5;
+                break;
+                
+            case 'patrol':
+                // Move in a pattern
+                enemy.ai.patrolAngle = (enemy.ai.patrolAngle || 0) + 0.02;
+                enemy.x = enemy.ai.centerX + Math.cos(enemy.ai.patrolAngle) * enemy.ai.patrolRadius;
+                enemy.y = enemy.ai.centerY + Math.sin(enemy.ai.patrolAngle) * enemy.ai.patrolRadius;
+                enemy.angle = enemy.ai.patrolAngle + Math.PI / 2;
+                break;
+        }
+        
+        // Check if enemy is too far from ship (despawn)
+        const despawnDx = this.ship.x - enemy.x;
+        const despawnDy = this.ship.y - enemy.y;
+        const despawnDistance = Math.sqrt(despawnDx * despawnDx + despawnDy * despawnDy);
+        if (despawnDistance > 2000) {
+            enemy.toRemove = true;
+        }
+    }
+    
+    updateMerchantMovement(merchant) {
+        if (merchant.arriving) {
+            // Approach from edge of screen
+            const dx = merchant.targetX - merchant.x;
+            const dy = merchant.targetY - merchant.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 5) {
+                merchant.angle = Math.atan2(dy, dx);
+                merchant.x += Math.cos(merchant.angle) * merchant.speed;
+                merchant.y += Math.sin(merchant.angle) * merchant.speed;
+            } else {
+                merchant.arriving = false;
+                merchant.showTradeIndicator = true;
+            }
+        } else if (merchant.leaving) {
+            // Leave towards edge of screen
+            merchant.x += Math.cos(merchant.angle) * merchant.speed;
+            merchant.y += Math.sin(merchant.angle) * merchant.speed;
+            
+            // Check if off screen
+            const offScreenDistance = Math.max(
+                Math.abs(merchant.x - this.ship.x),
+                Math.abs(merchant.y - this.ship.y)
+            );
+            if (offScreenDistance > 1000) {
+                merchant.toRemove = true;
+            }
+        }
+    }
+    
+    updateMerchantDocking(merchant) {
+        // Smooth docking animation
+        const stationX = merchant.dockTarget.x;
+        const stationY = merchant.dockTarget.y;
+        const dx = stationX - merchant.x;
+        const dy = stationY - merchant.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance > 50) {
+            merchant.angle = Math.atan2(dy, dx);
+            merchant.x += Math.cos(merchant.angle) * merchant.speed * 0.5;
+            merchant.y += Math.sin(merchant.angle) * merchant.speed * 0.5;
+        } else {
+            // Orbit around station
+            merchant.dockAngle = (merchant.dockAngle || 0) + 0.01;
+            merchant.x = stationX + Math.cos(merchant.dockAngle) * 50;
+            merchant.y = stationY + Math.sin(merchant.dockAngle) * 50;
+            merchant.angle = merchant.dockAngle + Math.PI / 2;
+        }
+    }
+    
+    fireEnemyProjectile(enemy) {
+        const projectileSpeed = 8;
+        const dx = this.ship.x - enemy.x;
+        const dy = this.ship.y - enemy.y;
+        const angle = Math.atan2(dy, dx);
+        
+        let projectileType = 'laser';
+        let projectileColor = '#FF0000';
+        
+        if (enemy.type === 'alien') {
+            projectileType = 'plasma';
+            projectileColor = '#00FF00';
+        } else if (enemy.type === 'rogue_ai') {
+            projectileType = 'plasma';
+            projectileColor = '#00FFFF';
+        }
+        
+        this.projectiles.push({
+            x: enemy.x + Math.cos(angle) * 30,
+            y: enemy.y + Math.sin(angle) * 30,
+            vx: Math.cos(angle) * projectileSpeed,
+            vy: Math.sin(angle) * projectileSpeed,
+            type: projectileType,
+            color: projectileColor,
+            damage: enemy.damage || 10,
+            life: 60,
+            owner: 'enemy'
+        });
+        
+        // Muzzle flash
+        for (let i = 0; i < 5; i++) {
+            this.particles.push({
+                x: enemy.x + Math.cos(angle) * 30,
+                y: enemy.y + Math.sin(angle) * 30,
+                vx: Math.cos(angle + (Math.random() - 0.5) * 0.5) * 3,
+                vy: Math.sin(angle + (Math.random() - 0.5) * 0.5) * 3,
+                size: 2,
+                life: 10,
+                maxLife: 10,
+                color: projectileType === 'plasma' ? '0, 255, 255' : '255, 100, 0'
+            });
+        }
+    }
+    
+    // Visual event methods
+    spawnEnemy(type, x, y, combatState) {
+        const enemy = {
+            x: x || this.ship.x + (Math.random() - 0.5) * 600,
+            y: y || this.ship.y + (Math.random() - 0.5) * 600,
+            angle: 0,
+            type: type,
+            hp: combatState?.enemy_hp || 100,
+            maxHp: combatState?.enemy_max_hp || 100,
+            speed: 2,
+            size: 25,
+            showHealthBar: true,
+            damaged: false,
+            ai: {
+                state: 'approach',
+                attackRange: 200,
+                attackCooldown: 60,
+                cooldown: 0
+            }
+        };
+        
+        // Customize based on enemy type
+        if (type === 'pirate') {
+            enemy.speed = 3;
+            enemy.ai.attackRange = 250;
+        } else if (type === 'alien') {
+            enemy.speed = 2.5;
+            enemy.ai.attackCooldown = 45;
+        } else if (type === 'rogue_ai') {
+            enemy.speed = 4;
+            enemy.ai.attackCooldown = 30;
+            enemy.ai.attackRange = 300;
+        }
+        
+        // Warp in effect
+        this.createWarpInEffect(enemy.x, enemy.y);
+        
+        this.enemies.push(enemy);
+        return enemy;
+    }
+    
+    spawnMerchant(targetX, targetY) {
+        // Spawn from edge of visible area
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 800;
+        
+        const merchant = {
+            x: this.ship.x + Math.cos(angle) * distance,
+            y: this.ship.y + Math.sin(angle) * distance,
+            targetX: targetX || this.ship.x,
+            targetY: targetY || this.ship.y,
+            angle: 0,
+            speed: 1.5,
+            size: 30,
+            arriving: true,
+            showTradeIndicator: false
+        };
+        
+        this.merchants.push(merchant);
+        return merchant;
+    }
+    
+    createDamageNumber(x, y, damage, color) {
+        this.damageNumbers.push({
+            x: x,
+            y: y,
+            text: `-${damage}`,
+            color: color || 'rgba(255, 100, 100, 1)',
+            vy: 2,
+            life: 60,
+            maxLife: 60
+        });
+    }
+    
+    createVisualEvent(type, x, y, data = {}) {
+        const event = {
+            type: type,
+            x: x,
+            y: y,
+            duration: data.duration || 60,
+            maxDuration: data.duration || 60,
+            ...data
+        };
+        
+        this.visualEvents.push(event);
+        return event;
+    }
+    
+    createWarpInEffect(x, y) {
+        // Create warp-in particles
+        for (let i = 0; i < 30; i++) {
+            const angle = (i / 30) * Math.PI * 2;
+            const speed = 5 + Math.random() * 5;
+            
+            this.particles.push({
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size: 3,
+                life: 30,
+                maxLife: 30,
+                color: '100, 200, 255'
+            });
+        }
+        
+        // Flash effect
+        this.screenFlash = {
+            intensity: 0.3,
+            color: 'rgba(100, 200, 255, 0.3)',
+            duration: 10
+        };
+    }
+    
+    firePlayerProjectile(targetX, targetY) {
+        const dx = targetX - this.ship.x;
+        const dy = targetY - this.ship.y;
+        const angle = Math.atan2(dy, dx);
+        const projectileSpeed = 10;
+        
+        this.projectiles.push({
+            x: this.ship.x + Math.cos(angle) * 30,
+            y: this.ship.y + Math.sin(angle) * 30,
+            vx: Math.cos(angle) * projectileSpeed,
+            vy: Math.sin(angle) * projectileSpeed,
+            type: 'laser',
+            color: '#00FF00',
+            damage: 25,
+            life: 60,
+            owner: 'player'
+        });
+        
+        // Muzzle flash
+        for (let i = 0; i < 5; i++) {
+            this.particles.push({
+                x: this.ship.x + Math.cos(angle) * 30,
+                y: this.ship.y + Math.sin(angle) * 30,
+                vx: Math.cos(angle + (Math.random() - 0.5) * 0.5) * 3,
+                vy: Math.sin(angle + (Math.random() - 0.5) * 0.5) * 3,
+                size: 2,
+                life: 10,
+                maxLife: 10,
+                color: '0, 255, 0'
+            });
+        }
+    }
+    
+    // Cleanup methods
+    clearCombatEntities() {
+        this.enemies = [];
+        this.projectiles = [];
+        this.damageNumbers = [];
+    }
+    
+    clearTradeEntities() {
+        this.merchants = [];
+    }
+    
+    updateEnemyHealth(hp, maxHp) {
+        // Update the first enemy's health (assuming single combat)
+        if (this.enemies.length > 0) {
+            const enemy = this.enemies[0];
+            const oldHp = enemy.hp;
+            enemy.hp = hp;
+            enemy.maxHp = maxHp;
+            
+            // Show damage if health decreased
+            if (hp < oldHp) {
+                const damage = oldHp - hp;
+                this.createDamageNumber(enemy.x, enemy.y, damage, 'rgba(255, 200, 100, 1)');
+                enemy.damaged = true;
+                setTimeout(() => { enemy.damaged = false; }, 500);
+                
+                // Flash effect on enemy
+                for (let i = 0; i < 10; i++) {
+                    this.particles.push({
+                        x: enemy.x + (Math.random() - 0.5) * 40,
+                        y: enemy.y + (Math.random() - 0.5) * 40,
+                        vx: (Math.random() - 0.5) * 5,
+                        vy: (Math.random() - 0.5) * 5,
+                        size: 3,
+                        life: 20,
+                        maxLife: 20,
+                        color: '255, 100, 0'
+                    });
+                }
+            }
+            
+            // Destroy enemy if hp <= 0
+            if (hp <= 0) {
+                this.createExplosion(enemy.x, enemy.y);
+                enemy.toRemove = true;
+            }
+        }
     }
     
     updateRegionTheme(region) {

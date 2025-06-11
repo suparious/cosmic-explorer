@@ -37,6 +37,8 @@ class EffectsManager {
                 this.shakeScreen();
                 // Center camera on ship during danger
                 this.renderer.centerCameraOn(this.renderer.ship.x, this.renderer.ship.y);
+                // Create warning visual
+                this.renderer.createVisualEvent('warning', this.renderer.ship.x, this.renderer.ship.y - 50, { duration: 120 });
                 break;
                 
             case 'success':
@@ -74,6 +76,12 @@ class EffectsManager {
                 this.audioManager.playAlertSound();
                 // Center camera on combat
                 this.renderer.centerCameraOn(this.renderer.ship.x, this.renderer.ship.y);
+                
+                // Spawn enemy based on combat state
+                if (event.combat_state) {
+                    const enemyType = this.getEnemyTypeFromName(event.combat_state.enemy_name);
+                    this.renderer.spawnEnemy(enemyType, null, null, event.combat_state);
+                }
                 break;
                 
             case 'damage':
@@ -82,8 +90,62 @@ class EffectsManager {
                 this.shakeScreen();
                 // Center camera on damage event
                 this.renderer.centerCameraOn(this.renderer.ship.x, this.renderer.ship.y);
+                
+                // Extract damage amount from message if possible
+                const damageMatch = event.message && event.message.match(/(\d+) damage/);
+                if (damageMatch) {
+                    const damage = parseInt(damageMatch[1]);
+                    this.renderer.createDamageNumber(
+                        this.renderer.ship.x, 
+                        this.renderer.ship.y, 
+                        damage,
+                        event.type === 'critical_damage' ? 'rgba(255, 0, 0, 1)' : 'rgba(255, 150, 150, 1)'
+                    );
+                }
+                break;
+                
+            case 'trade':
+            case 'trade_complete':
+                this.audioManager.playSound('success');
+                // Spawn merchant ship if at trading post
+                const location = this.gameEngine.gameState?.current_location;
+                if (location && location.node && location.node.type === 'trading_post') {
+                    const merchant = this.renderer.spawnMerchant();
+                    // Show trade visual event
+                    setTimeout(() => {
+                        this.renderer.createVisualEvent('trade', merchant.x, merchant.y, { 
+                            duration: 60, 
+                            value: event.value || '100' 
+                        });
+                        merchant.leaving = true;
+                        merchant.angle = Math.random() * Math.PI * 2;
+                    }, 2000);
+                }
+                break;
+                
+            case 'salvage':
+                this.audioManager.playSound('success');
+                this.renderer.createVisualEvent('salvage', this.renderer.ship.x, this.renderer.ship.y, { duration: 90 });
+                break;
+                
+            case 'combat_end':
+                // Clear combat entities after a delay
+                setTimeout(() => {
+                    this.renderer.clearCombatEntities();
+                }, 1000);
                 break;
         }
+    }
+    
+    getEnemyTypeFromName(enemyName) {
+        if (!enemyName) return 'pirate';
+        
+        const name = enemyName.toLowerCase();
+        if (name.includes('pirate')) return 'pirate';
+        if (name.includes('alien') || name.includes('hostile')) return 'alien';
+        if (name.includes('rogue') || name.includes('ai') || name.includes('drone')) return 'rogue_ai';
+        
+        return 'pirate'; // default
     }
     
     createWarpEffect() {

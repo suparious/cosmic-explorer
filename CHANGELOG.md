@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Visual Event System - enemies, merchants, and encounters are now visible!
+  - Enemy ship rendering with unique designs (pirates, aliens, rogue AI)
+  - Real-time combat visuals with projectiles and explosions
+  - Damage numbers and health bars
+  - Merchant ships that dock at trading posts
+  - Visual indicators for events (warnings, trade, salvage)
+  - Enemy AI with movement and attack patterns
 - Comprehensive development documentation and tooling
 - Test suite with pytest
 - Modern Python packaging with pyproject.toml

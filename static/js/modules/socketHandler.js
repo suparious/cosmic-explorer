@@ -74,6 +74,13 @@ class SocketHandler {
         // Add to event log
         this.gameEngine.uiManager.addEventMessage(event.message, event.type);
         
+        // Pass combat state if available
+        if (event.combat_state) {
+            event.combat_state = event.combat_state;
+        } else if (event.result && event.result.combat_state) {
+            event.combat_state = event.result.combat_state;
+        }
+        
         // Delegate to effects manager for visual/audio effects
         this.gameEngine.effectsManager.handleEventEffects(event);
         
@@ -107,6 +114,14 @@ class SocketHandler {
                 if (ongoingCombatState) {
                     combatUI.updateCombatDisplay(ongoingCombatState);
                     combatUI.updateCombatActions(event.choices || ['Attack', 'Flee', 'Negotiate']);
+                    
+                    // Update enemy health on renderer
+                    if (this.gameEngine.renderer) {
+                        this.gameEngine.renderer.updateEnemyHealth(
+                            ongoingCombatState.enemy_hp,
+                            ongoingCombatState.enemy_max_hp
+                        );
+                    }
                     
                     // Add log entries for combat messages
                     if (event.message) {
