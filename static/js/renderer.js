@@ -21,6 +21,10 @@ class Renderer {
         this.projectiles = [];
         this.damageNumbers = [];
         this.visualEvents = [];
+        this.wrecks = [];
+        this.cargoContainers = [];
+        this.targetLocks = [];
+        this.tractorBeams = [];
         
         // Current region theme
         this.currentRegion = null;
@@ -30,6 +34,14 @@ class Renderer {
             starDensity: 1.0,
             nebulaOpacity: 0.5,
             ambientBrightness: 0.5
+        };
+        
+        // Warp effect state
+        this.warpEffect = {
+            active: false,
+            progress: 0,
+            startTime: 0,
+            duration: 2000
         };
         
         // Camera
@@ -70,7 +82,22 @@ class Renderer {
             podHp: 0,
             podMaxHp: 30,
             podAnimationState: 'idle',
-            podAugmentations: []
+            podAugmentations: [],
+            // EVE-style systems
+            shield: 100,
+            maxShield: 100,
+            armor: 100,
+            maxArmor: 100,
+            hull: 100,
+            maxHull: 100,
+            capacitor: 100,
+            maxCapacitor: 100,
+            targetLocked: null,
+            lockingTarget: null,
+            lockProgress: 0,
+            orbitTarget: null,
+            orbitRange: 200,
+            modules: []
         };
         
         // Center camera on ship initially
@@ -189,10 +216,14 @@ class Renderer {
         this.renderStations();
         this.renderAsteroids();
         this.renderRegionEffects();
+        this.renderWrecks();
+        this.renderCargoContainers();
         this.renderEnemies();
         this.renderMerchants();
         this.renderShip();
+        this.renderTargetLocks();
         this.renderProjectiles();
+        this.renderTractorBeams();
         this.renderParticles();
         this.renderVisualEvents();
         
@@ -200,10 +231,13 @@ class Renderer {
         this.ctx.restore();
         
         // Render UI elements (not affected by camera)
+        this.renderWarpEffect();
         this.renderScanEffect();
         this.renderScreenFlash();
         this.renderDamageOverlay(gameState);
         this.renderDamageNumbers();
+        this.renderCapacitorUI();
+        this.renderShipStatusUI();
     }
     
     renderStars() {
@@ -248,18 +282,40 @@ class Renderer {
             this.ship.trail.shift();
         }
         
-        // Render trail
-        this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ship.trail.forEach((point, i) => {
-            if (i === 0) {
-                this.ctx.moveTo(point.x, point.y);
-            } else {
-                this.ctx.lineTo(point.x, point.y);
-            }
-        });
-        this.ctx.stroke();
+        // Render trail (enhanced for warp)
+        if (this.warpEffect.active) {
+            // Stretched warp trail
+            const warpStretch = 1 + this.warpEffect.progress * 5;
+            this.ctx.strokeStyle = `rgba(0, 255, 255, ${0.6 - this.warpEffect.progress * 0.3})`;
+            this.ctx.lineWidth = 2 + this.warpEffect.progress * 10;
+            this.ctx.beginPath();
+            this.ship.trail.forEach((point, i) => {
+                const dx = point.x - this.ship.x;
+                const dy = point.y - this.ship.y;
+                const stretchedX = this.ship.x + dx * warpStretch;
+                const stretchedY = this.ship.y + dy * warpStretch;
+                
+                if (i === 0) {
+                    this.ctx.moveTo(stretchedX, stretchedY);
+                } else {
+                    this.ctx.lineTo(stretchedX, stretchedY);
+                }
+            });
+            this.ctx.stroke();
+        } else {
+            // Normal trail
+            this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ship.trail.forEach((point, i) => {
+                if (i === 0) {
+                    this.ctx.moveTo(point.x, point.y);
+                } else {
+                    this.ctx.lineTo(point.x, point.y);
+                }
+            });
+            this.ctx.stroke();
+        }
         
         // Check if in pod mode
         if (this.ship.inPodMode) {
@@ -270,14 +326,29 @@ class Renderer {
         // Render ship
         this.ctx.save();
         this.ctx.translate(this.ship.x, this.ship.y);
+        
+        // Render shield effect if shields are active
+        if (this.ship.shield > 0) {
+            this.renderShieldBubble();
+        }
+        
         this.ctx.rotate(this.ship.angle);
         
-        // Ship color based on condition
+        // Ship color based on hull damage
         let shipColor = GameConfig.colors.ship.healthy;
-        if (this.ship.condition < 30) {
+        const hullPercent = this.ship.hull / this.ship.maxHull;
+        if (hullPercent < 0.3) {
             shipColor = GameConfig.colors.ship.critical;
-        } else if (this.ship.condition < 70) {
+        } else if (hullPercent < 0.7) {
             shipColor = GameConfig.colors.ship.damaged;
+        }
+        
+        // Add damage effects based on armor/hull
+        if (this.ship.armor < this.ship.maxArmor * 0.5) {
+            this.renderArmorDamage();
+        }
+        if (this.ship.hull < this.ship.maxHull * 0.5) {
+            this.renderHullBreach();
         }
         
         // Ship type affects shape
@@ -1066,6 +1137,509 @@ class Renderer {
             }
             
             return true;
+        });
+    }
+    
+    renderWrecks() {
+        this.wrecks.forEach(wreck => {
+            wreck.rotation += 0.01;
+            
+            this.ctx.save();
+            this.ctx.translate(wreck.x, wreck.y);
+            this.ctx.rotate(wreck.rotation);
+            
+            // Wreck body - damaged version of original ship
+            this.ctx.fillStyle = '#3E3E3E';
+            this.ctx.strokeStyle = '#666666';
+            this.ctx.lineWidth = 2;
+            
+            // Draw broken ship pieces
+            this.ctx.beginPath();
+            this.ctx.moveTo(10, 0);
+            this.ctx.lineTo(-5, -8);
+            this.ctx.lineTo(-10, -5);
+            this.ctx.lineTo(-8, 5);
+            this.ctx.lineTo(5, 8);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.stroke();
+            
+            // Salvageable indicator
+            if (wreck.salvageable) {
+                const pulseAlpha = 0.5 + Math.sin(Date.now() * 0.003) * 0.3;
+                this.ctx.strokeStyle = `rgba(255, 200, 0, ${pulseAlpha})`;
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(0, 0, 25, 0, Math.PI * 2);
+                this.ctx.stroke();
+            }
+            
+            this.ctx.restore();
+        });
+    }
+    
+    renderCargoContainers() {
+        this.cargoContainers.forEach(container => {
+            this.ctx.save();
+            this.ctx.translate(container.x, container.y);
+            
+            // Container glow
+            const glowRadius = 15 + Math.sin(Date.now() * 0.002) * 3;
+            const gradient = this.ctx.createRadialGradient(0, 0, 0, 0, 0, glowRadius);
+            gradient.addColorStop(0, 'rgba(255, 200, 0, 0.4)');
+            gradient.addColorStop(1, 'rgba(255, 200, 0, 0)');
+            this.ctx.fillStyle = gradient;
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, glowRadius, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Container body
+            this.ctx.fillStyle = '#8B6914';
+            this.ctx.strokeStyle = '#FFD700';
+            this.ctx.lineWidth = 2;
+            this.ctx.fillRect(-8, -8, 16, 16);
+            this.ctx.strokeRect(-8, -8, 16, 16);
+            
+            // Loot indicator
+            this.ctx.fillStyle = '#FFD700';
+            this.ctx.font = '12px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('📦', 0, 0);
+            
+            this.ctx.restore();
+        });
+    }
+    
+    renderTargetLocks() {
+        // Render target lock on enemies
+        if (this.ship.targetLocked) {
+            const target = this.enemies.find(e => e.id === this.ship.targetLocked);
+            if (target) {
+                this.ctx.save();
+                this.ctx.translate(target.x, target.y);
+                
+                // Target lock brackets
+                const lockSize = 40;
+                const cornerLength = 10;
+                this.ctx.strokeStyle = '#FF0000';
+                this.ctx.lineWidth = 2;
+                
+                // Top-left corner
+                this.ctx.beginPath();
+                this.ctx.moveTo(-lockSize/2, -lockSize/2 + cornerLength);
+                this.ctx.lineTo(-lockSize/2, -lockSize/2);
+                this.ctx.lineTo(-lockSize/2 + cornerLength, -lockSize/2);
+                this.ctx.stroke();
+                
+                // Top-right corner
+                this.ctx.beginPath();
+                this.ctx.moveTo(lockSize/2 - cornerLength, -lockSize/2);
+                this.ctx.lineTo(lockSize/2, -lockSize/2);
+                this.ctx.lineTo(lockSize/2, -lockSize/2 + cornerLength);
+                this.ctx.stroke();
+                
+                // Bottom-left corner
+                this.ctx.beginPath();
+                this.ctx.moveTo(-lockSize/2, lockSize/2 - cornerLength);
+                this.ctx.lineTo(-lockSize/2, lockSize/2);
+                this.ctx.lineTo(-lockSize/2 + cornerLength, lockSize/2);
+                this.ctx.stroke();
+                
+                // Bottom-right corner
+                this.ctx.beginPath();
+                this.ctx.moveTo(lockSize/2 - cornerLength, lockSize/2);
+                this.ctx.lineTo(lockSize/2, lockSize/2);
+                this.ctx.lineTo(lockSize/2, lockSize/2 - cornerLength);
+                this.ctx.stroke();
+                
+                // Range indicator
+                const distance = Math.sqrt(
+                    Math.pow(target.x - this.ship.x, 2) + 
+                    Math.pow(target.y - this.ship.y, 2)
+                );
+                this.ctx.font = '10px Orbitron';
+                this.ctx.fillStyle = '#FF0000';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(`${Math.round(distance)}m`, 0, lockSize/2 + 15);
+                
+                this.ctx.restore();
+            }
+        }
+        
+        // Render locking progress
+        if (this.ship.lockingTarget) {
+            const target = this.enemies.find(e => e.id === this.ship.lockingTarget);
+            if (target) {
+                this.ctx.save();
+                this.ctx.translate(target.x, target.y);
+                
+                // Locking animation
+                const lockProgress = this.ship.lockProgress;
+                const lockRadius = 30;
+                
+                this.ctx.strokeStyle = `rgba(255, 255, 0, ${0.5 + lockProgress * 0.5})`;
+                this.ctx.lineWidth = 2;
+                this.ctx.setLineDash([5, 5]);
+                this.ctx.beginPath();
+                this.ctx.arc(0, 0, lockRadius, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * lockProgress));
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+                
+                // Lock percentage
+                this.ctx.font = '12px Orbitron';
+                this.ctx.fillStyle = '#FFFF00';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(`${Math.round(lockProgress * 100)}%`, 0, 0);
+                
+                this.ctx.restore();
+            }
+        }
+    }
+    
+    renderTractorBeams() {
+        this.tractorBeams.forEach(beam => {
+            beam.progress += 0.02;
+            if (beam.progress > 1) beam.progress = 0;
+            
+            // Draw tractor beam
+            const gradient = this.ctx.createLinearGradient(
+                beam.sourceX, beam.sourceY,
+                beam.targetX, beam.targetY
+            );
+            gradient.addColorStop(0, 'rgba(0, 255, 255, 0.6)');
+            gradient.addColorStop(beam.progress, 'rgba(0, 255, 255, 0.8)');
+            gradient.addColorStop(1, 'rgba(0, 255, 255, 0.2)');
+            
+            this.ctx.strokeStyle = gradient;
+            this.ctx.lineWidth = 3;
+            this.ctx.setLineDash([10, 5]);
+            this.ctx.beginPath();
+            this.ctx.moveTo(beam.sourceX, beam.sourceY);
+            this.ctx.lineTo(beam.targetX, beam.targetY);
+            this.ctx.stroke();
+            this.ctx.setLineDash([]);
+            
+            // Tractor beam particles
+            const dx = beam.targetX - beam.sourceX;
+            const dy = beam.targetY - beam.sourceY;
+            const particleX = beam.sourceX + dx * beam.progress;
+            const particleY = beam.sourceY + dy * beam.progress;
+            
+            this.ctx.fillStyle = 'rgba(0, 255, 255, 0.8)';
+            this.ctx.beginPath();
+            this.ctx.arc(particleX, particleY, 4, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+    }
+    
+    renderShieldBubble() {
+        const shieldPercent = this.ship.shield / this.ship.maxShield;
+        if (shieldPercent <= 0) return;
+        
+        const time = Date.now() * 0.001;
+        const shieldRadius = 40;
+        
+        // Shield hit effect
+        let hitAlpha = 0;
+        if (this.ship.lastHitTime && Date.now() - this.ship.lastHitTime < 500) {
+            hitAlpha = (500 - (Date.now() - this.ship.lastHitTime)) / 500;
+        }
+        
+        // Shield bubble
+        const shieldAlpha = 0.1 + shieldPercent * 0.2 + hitAlpha * 0.3;
+        let shieldColor;
+        if (shieldPercent > 0.5) {
+            shieldColor = `rgba(0, 200, 255, ${shieldAlpha})`;
+        } else if (shieldPercent > 0.25) {
+            shieldColor = `rgba(255, 255, 0, ${shieldAlpha})`;
+        } else {
+            shieldColor = `rgba(255, 100, 0, ${shieldAlpha})`;
+        }
+        
+        // Hexagonal shield pattern
+        this.ctx.save();
+        this.ctx.strokeStyle = shieldColor;
+        this.ctx.lineWidth = 2 + hitAlpha * 3;
+        
+        for (let ring = 0; ring < 3; ring++) {
+            const ringRadius = shieldRadius * (0.8 + ring * 0.1);
+            const hexAlpha = shieldAlpha * (1 - ring * 0.3);
+            this.ctx.strokeStyle = shieldColor.replace(shieldAlpha.toString(), hexAlpha.toString());
+            
+            this.ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (i / 6) * Math.PI * 2 + time * 0.5;
+                const x = Math.cos(angle) * ringRadius;
+                const y = Math.sin(angle) * ringRadius;
+                if (i === 0) {
+                    this.ctx.moveTo(x, y);
+                } else {
+                    this.ctx.lineTo(x, y);
+                }
+            }
+            this.ctx.closePath();
+            this.ctx.stroke();
+        }
+        
+        // Shield shimmer effect
+        if (shieldPercent > 0) {
+            const shimmerAngle = time * 2;
+            const shimmerX = Math.cos(shimmerAngle) * shieldRadius;
+            const shimmerY = Math.sin(shimmerAngle) * shieldRadius;
+            
+            const shimmerGradient = this.ctx.createRadialGradient(
+                shimmerX, shimmerY, 0,
+                shimmerX, shimmerY, 10
+            );
+            shimmerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+            shimmerGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            
+            this.ctx.fillStyle = shimmerGradient;
+            this.ctx.beginPath();
+            this.ctx.arc(shimmerX, shimmerY, 10, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+        
+        this.ctx.restore();
+    }
+    
+    renderArmorDamage() {
+        // Armor breach marks
+        const armorPercent = this.ship.armor / this.ship.maxArmor;
+        const numBreaches = Math.floor((1 - armorPercent) * 5);
+        
+        for (let i = 0; i < numBreaches; i++) {
+            const angle = (i / 5) * Math.PI * 2;
+            const x = Math.cos(angle) * 15;
+            const y = Math.sin(angle) * 15;
+            
+            // Scorch marks
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 5, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Damage lines
+            this.ctx.strokeStyle = 'rgba(139, 69, 19, 0.8)';
+            this.ctx.lineWidth = 1;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x - 3, y - 3);
+            this.ctx.lineTo(x + 3, y + 3);
+            this.ctx.moveTo(x + 3, y - 3);
+            this.ctx.lineTo(x - 3, y + 3);
+            this.ctx.stroke();
+        }
+    }
+    
+    renderHullBreach() {
+        // Hull breach effects - sparks and venting
+        const hullPercent = this.ship.hull / this.ship.maxHull;
+        const breachSeverity = 1 - hullPercent;
+        
+        if (Math.random() < breachSeverity) {
+            // Create spark
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * 20;
+            const sparkX = Math.cos(angle) * distance;
+            const sparkY = Math.sin(angle) * distance;
+            
+            this.particles.push({
+                x: this.ship.x + sparkX,
+                y: this.ship.y + sparkY,
+                vx: (Math.random() - 0.5) * 3,
+                vy: (Math.random() - 0.5) * 3,
+                size: 1,
+                life: 20,
+                maxLife: 20,
+                color: '255, 200, 0'
+            });
+        }
+        
+        // Venting atmosphere
+        if (Math.random() < breachSeverity * 0.5) {
+            const ventAngle = Math.random() * Math.PI * 2;
+            const ventX = Math.cos(ventAngle) * 15;
+            const ventY = Math.sin(ventAngle) * 15;
+            
+            for (let i = 0; i < 5; i++) {
+                this.particles.push({
+                    x: this.ship.x + ventX,
+                    y: this.ship.y + ventY,
+                    vx: Math.cos(ventAngle) * (2 + Math.random() * 2),
+                    vy: Math.sin(ventAngle) * (2 + Math.random() * 2),
+                    size: Math.random() * 3 + 1,
+                    life: 30,
+                    maxLife: 30,
+                    color: '200, 200, 200'
+                });
+            }
+        }
+    }
+    
+    renderWarpEffect() {
+        if (!this.warpEffect.active) return;
+        
+        const progress = (Date.now() - this.warpEffect.startTime) / this.warpEffect.duration;
+        if (progress >= 1) {
+            this.warpEffect.active = false;
+            return;
+        }
+        
+        this.warpEffect.progress = progress;
+        
+        // Warp tunnel effect
+        this.ctx.save();
+        this.ctx.translate(this.width / 2, this.height / 2);
+        
+        // Create warp lines
+        const numLines = 50;
+        for (let i = 0; i < numLines; i++) {
+            const angle = (i / numLines) * Math.PI * 2;
+            const startRadius = progress * 50;
+            const endRadius = Math.max(this.width, this.height);
+            
+            const gradient = this.ctx.createLinearGradient(
+                Math.cos(angle) * startRadius,
+                Math.sin(angle) * startRadius,
+                Math.cos(angle) * endRadius,
+                Math.sin(angle) * endRadius
+            );
+            gradient.addColorStop(0, 'rgba(0, 255, 255, 0)');
+            gradient.addColorStop(0.5, `rgba(0, 255, 255, ${0.8 - progress * 0.5})`);
+            gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+            
+            this.ctx.strokeStyle = gradient;
+            this.ctx.lineWidth = 2 + progress * 3;
+            this.ctx.beginPath();
+            this.ctx.moveTo(Math.cos(angle) * startRadius, Math.sin(angle) * startRadius);
+            this.ctx.lineTo(Math.cos(angle) * endRadius, Math.sin(angle) * endRadius);
+            this.ctx.stroke();
+        }
+        
+        // Warp flash
+        if (progress < 0.3) {
+            const flashAlpha = (0.3 - progress) / 0.3;
+            this.ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha * 0.5})`;
+            this.ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+        }
+        
+        this.ctx.restore();
+    }
+    
+    renderCapacitorUI() {
+        const capPercent = this.ship.capacitor / this.ship.maxCapacitor;
+        
+        // Capacitor bar position
+        const barX = 20;
+        const barY = this.height - 60;
+        const barWidth = 200;
+        const barHeight = 20;
+        
+        // Background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.ctx.fillRect(barX, barY, barWidth, barHeight);
+        
+        // Capacitor fill
+        const gradient = this.ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
+        if (capPercent > 0.5) {
+            gradient.addColorStop(0, '#FFD700');
+            gradient.addColorStop(1, '#FFA500');
+        } else if (capPercent > 0.25) {
+            gradient.addColorStop(0, '#FFA500');
+            gradient.addColorStop(1, '#FF6347');
+        } else {
+            gradient.addColorStop(0, '#FF6347');
+            gradient.addColorStop(1, '#DC143C');
+        }
+        
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(barX, barY, barWidth * capPercent, barHeight);
+        
+        // Border
+        this.ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(barX, barY, barWidth, barHeight);
+        
+        // Capacitor text
+        this.ctx.font = '12px Orbitron';
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(
+            `Capacitor: ${Math.round(capPercent * 100)}%`,
+            barX + barWidth / 2,
+            barY - 5
+        );
+        
+        // Recharge rate indicator
+        if (capPercent < 1) {
+            const rechargeX = barX + barWidth * capPercent;
+            this.ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+            this.ctx.lineWidth = 3;
+            this.ctx.beginPath();
+            this.ctx.moveTo(rechargeX, barY);
+            this.ctx.lineTo(rechargeX, barY + barHeight);
+            this.ctx.stroke();
+        }
+    }
+    
+    renderShipStatusUI() {
+        // Ship status bars (Shield/Armor/Hull)
+        const startX = this.width - 220;
+        const startY = this.height - 100;
+        const barWidth = 180;
+        const barHeight = 15;
+        const barSpacing = 20;
+        
+        const statuses = [
+            { label: 'Shield', value: this.ship.shield, max: this.ship.maxShield, color1: '#00FFFF', color2: '#0080FF' },
+            { label: 'Armor', value: this.ship.armor, max: this.ship.maxArmor, color1: '#FFD700', color2: '#FF8C00' },
+            { label: 'Hull', value: this.ship.hull, max: this.ship.maxHull, color1: '#DC143C', color2: '#8B0000' }
+        ];
+        
+        statuses.forEach((status, index) => {
+            const y = startY + index * barSpacing;
+            const percent = status.value / status.max;
+            
+            // Background
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(startX, y, barWidth, barHeight);
+            
+            // Status fill
+            if (percent > 0) {
+                const gradient = this.ctx.createLinearGradient(startX, y, startX + barWidth, y);
+                gradient.addColorStop(0, status.color1);
+                gradient.addColorStop(1, status.color2);
+                
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(startX, y, barWidth * percent, barHeight);
+            }
+            
+            // Damage flash
+            if (status.label === 'Shield' && this.ship.lastShieldHit && Date.now() - this.ship.lastShieldHit < 300) {
+                const flashAlpha = (300 - (Date.now() - this.ship.lastShieldHit)) / 300;
+                this.ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha * 0.5})`;
+                this.ctx.fillRect(startX, y, barWidth, barHeight);
+            }
+            
+            // Border
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeRect(startX, y, barWidth, barHeight);
+            
+            // Label
+            this.ctx.font = '11px Orbitron';
+            this.ctx.fillStyle = status.color1;
+            this.ctx.textAlign = 'right';
+            this.ctx.fillText(status.label, startX - 5, y + barHeight - 3);
+            
+            // Value
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(
+                `${Math.round(status.value)}/${status.max}`,
+                startX + barWidth / 2,
+                y + barHeight - 3
+            );
         });
     }
     
