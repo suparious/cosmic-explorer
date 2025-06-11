@@ -4,26 +4,20 @@
 
 ## 🚀 Immediate Actions (1-2 days each)
 
-### 1. Fix Star Map Interactivity
+### 1. ~~Fix Star Map Interactivity~~ ✅ COMPLETED
 **File**: `/static/js/ui.js` (showStarMap function)
-**Current**: Shows static map with close button
-**Needed**:
-```javascript
-// Add to star map canvas click handler
-canvas.addEventListener('click', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    // Check which node was clicked
-    nodes.forEach(node => {
-        if (distance(x, y, node.x, node.y) < node.radius) {
-            // Show travel preview
-            showTravelPreview(node);
-        }
-    });
-});
-```
+**Status**: Fully implemented with:
+- Click detection for star map nodes
+- Visual feedback for selected nodes (white border, glow effect)
+- Travel preview panel showing:
+  - Destination name and type
+  - Fuel cost with current fuel comparison
+  - Danger level indicator (Low/Medium/High)
+  - Available services (repair, trade)
+  - Unexplored location indicator
+- Confirm button to execute travel
+- Prevents clicking unreachable nodes
+- Sidebar navigation options list synced with clicked nodes
 
 ### 2. Add Trading UI
 **File**: Create `/static/js/trading.js`
@@ -38,22 +32,13 @@ class TradingUI {
 }
 ```
 
-### 3. Implement Scanning
+### 3. ~~Implement Scanning~~ ✅ COMPLETED
 **File**: `/api/action_processor.py` - `handle_scan`
-**Current**: Returns "not implemented"
-**Quick Win**:
-```python
-def handle_scan(self, session, data):
-    # 30% chance to find something
-    if random.random() < 0.3:
-        # Use existing item generation
-        return self.handle_random_event(session, data)
-    else:
-        return {
-            "event": "Scan complete. Nothing of interest detected.",
-            "event_type": "info"
-        }
-```
+**Status**: Fully implemented with:
+- 30% base chance to find something (50% with scanner array)
+- Generates random loot, stat events, or "nothing found" messages
+- Different scan result messages for variety
+- Integrates with inventory system for loot
 
 ## 📈 High-Impact Features (3-5 days)
 
@@ -132,14 +117,14 @@ const REGION_ECONOMIES = {
 ## 🏃 Quick Wins Checklist
 
 **Today** (under 1 hour each):
-- [ ] Make scan button do something (random events)
+- [x] Make scan button do something (random events) ✅
 - [ ] Add "New Quest Available!" to docked locations
 - [ ] Color-code items by rarity in inventory
 - [ ] Add tooltips showing item values
-- [ ] Make star map nodes glow on hover
+- [x] Make star map nodes glow on hover ✅
 
 **This Week**:
-- [ ] Click-to-travel on star map
+- [x] Click-to-travel on star map ✅
 - [ ] Basic trading UI
 - [ ] 5 weapon sound effects
 - [ ] 3 simple delivery quests

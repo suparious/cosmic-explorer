@@ -2428,6 +2428,11 @@ class UIManager {
                                 <h5>Current Location</h5>
                                 <div id="current-location-details"></div>
                             </div>
+                            <div id="travel-preview" style="display: none; margin-top: 2rem; padding: 1rem; background: var(--glass-bg); border: 2px solid var(--primary-color); border-radius: 8px;">
+                                <h5>Travel Preview</h5>
+                                <div id="travel-preview-content"></div>
+                                <button class="menu-btn" style="width: 100%; margin-top: 1rem;" onclick="window.gameUI.confirmTravel()">Confirm Travel</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2452,7 +2457,7 @@ class UIManager {
                     #star-map-canvas {
                         flex: 1;
                         background: #000033;
-                        cursor: grab;
+                        cursor: crosshair;
                     }
                     #star-map-canvas:active {
                         cursor: grabbing;
@@ -2464,23 +2469,39 @@ class UIManager {
                         padding: 1.5rem;
                         overflow-y: auto;
                     }
-                    #navigation-options-list {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 0.5rem;
-                        margin: 1rem 0;
-                    }
                     .nav-option {
-                        background: rgba(0, 255, 255, 0.1);
-                        border: 1px solid var(--primary-color);
+                        background: var(--glass-bg);
+                        border: 1px solid var(--glass-border);
                         border-radius: 8px;
                         padding: 1rem;
+                        margin-bottom: 0.5rem;
                         cursor: pointer;
                         transition: all 0.3s ease;
                     }
                     .nav-option:hover {
-                        background: rgba(0, 255, 255, 0.2);
-                        transform: translateX(5px);
+                        border-color: var(--primary-color);
+                        transform: translateX(-5px);
+                    }
+                    .nav-option.selected {
+                        border-color: var(--primary-color);
+                        background: rgba(0, 255, 255, 0.1);
+                    }
+                    .nav-option-name {
+                        font-weight: 600;
+                        color: var(--primary-color);
+                    }
+                    .nav-option-type {
+                        font-size: 0.8rem;
+                        color: var(--text-secondary);
+                    }
+                    .nav-option-fuel {
+                        font-size: 0.9rem;
+                        color: var(--accent-color);
+                        margin-top: 0.5rem;
+                    }
+                    .nav-option-danger {
+                        font-size: 0.8rem;
+                        color: var(--danger-color);
                     }
                     .nav-option.region {
                         border-color: var(--accent-color);
@@ -2489,22 +2510,168 @@ class UIManager {
                     .nav-option.region:hover {
                         background: rgba(255, 255, 0, 0.2);
                     }
-                    .nav-option-header {
-                        font-weight: 700;
-                        margin-bottom: 0.25rem;
-                    }
-                    .nav-option-details {
-                        font-size: 0.8rem;
-                        color: var(--text-secondary);
-                    }
                     .current-location-info {
                         margin-top: 2rem;
-                        padding-top: 1rem;
-                        border-top: 1px solid var(--glass-border);
+                        padding: 1rem;
+                        background: rgba(255, 255, 255, 0.05);
+                        border-radius: 8px;
                     }
                 `;
                 document.head.appendChild(style);
             }
+        }
+        
+        // Clear previous data
+        this.starMapNodes = [];
+        this.selectedNode = null;
+        this.pendingTravel = null;
+        
+        // Render star map
+        const canvas = document.getElementById('star-map-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas size
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+        
+        // Clear canvas
+        ctx.fillStyle = '#000033';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw stars background
+        for (let i = 0; i < 100; i++) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.8})`;
+            ctx.beginPath();
+            ctx.arc(
+                Math.random() * canvas.width,
+                Math.random() * canvas.height,
+                Math.random() * 2,
+                0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+        
+        // Get current region and nodes
+        const currentRegion = starMap.regions[starMap.current_region_id];
+        const nodes = currentRegion ? currentRegion.nodes : [];
+        
+        // Calculate node positions
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = Math.min(canvas.width, canvas.height) * 0.35;
+        
+        nodes.forEach((node, index) => {
+            const angle = (Math.PI * 2 * index) / nodes.length;
+            const x = centerX + Math.cos(angle) * radius * (0.5 + Math.random() * 0.5);
+            const y = centerY + Math.sin(angle) * radius * (0.5 + Math.random() * 0.5);
+            
+            // Store node position for click detection
+            this.starMapNodes.push({
+                id: node.id,
+                x: x,
+                y: y,
+                radius: 20,
+                node: node
+            });
+        });
+        
+        // Draw connections
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+        ctx.lineWidth = 1;
+        this.starMapNodes.forEach(nodeData => {
+            const node = nodeData.node;
+            if (node.connections) {
+                node.connections.forEach(connId => {
+                    const targetNode = this.starMapNodes.find(n => n.id === connId);
+                    if (targetNode) {
+                        ctx.beginPath();
+                        ctx.moveTo(nodeData.x, nodeData.y);
+                        ctx.lineTo(targetNode.x, targetNode.y);
+                        ctx.stroke();
+                    }
+                });
+            }
+        });
+        
+        // Draw nodes
+        this.starMapNodes.forEach(nodeData => {
+            const node = nodeData.node;
+            const isCurrent = node.id === starMap.current_node_id;
+            const isSelected = this.selectedNode && this.selectedNode.id === node.id;
+            
+            // Node glow effect
+            if (isCurrent || isSelected) {
+                const gradient = ctx.createRadialGradient(nodeData.x, nodeData.y, 0, nodeData.x, nodeData.y, 30);
+                gradient.addColorStop(0, isCurrent ? 'rgba(255, 255, 0, 0.5)' : 'rgba(0, 255, 255, 0.5)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(nodeData.x, nodeData.y, 30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Node circle
+            ctx.fillStyle = node.visited ? '#00ffff' : '#666666';
+            if (node.has_repair) ctx.fillStyle = '#33ff33';
+            if (node.type === 'wormhole') ctx.fillStyle = '#ff00ff';
+            if (isCurrent) ctx.fillStyle = '#ffff00';
+            
+            ctx.beginPath();
+            ctx.arc(nodeData.x, nodeData.y, nodeData.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Node border
+            ctx.strokeStyle = isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = isSelected ? 3 : 1;
+            ctx.stroke();
+            
+            // Node icon
+            const icons = {
+                planet: '🪐',
+                station: '🛰️',
+                asteroid_field: '☄️',
+                wormhole: '🌀',
+                trading_post: '🏪',
+                research_facility: '🔬'
+            };
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(icons[node.type] || '⭐', nodeData.x, nodeData.y);
+            
+            // Node name
+            ctx.font = '12px Arial';
+            ctx.fillStyle = 'white';
+            ctx.fillText(node.name, nodeData.x, nodeData.y + 30);
+        });
+        
+        // Add click handler
+        canvas.onclick = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Check which node was clicked
+            for (const nodeData of this.starMapNodes) {
+                const distance = Math.sqrt(Math.pow(x - nodeData.x, 2) + Math.pow(y - nodeData.y, 2));
+                if (distance <= nodeData.radius) {
+                    this.selectStarMapNode(nodeData);
+                    break;
+                }
+            }
+        };
+        
+        // Update navigation options list
+        this.updateNavigationOptions(navigationData);
+        
+        // Update current location info
+        const currentLocationDiv = document.getElementById('current-location-details');
+        if (currentLocationDiv && navigationData.current_location) {
+            currentLocationDiv.innerHTML = `
+                <div><strong>Region:</strong> ${navigationData.current_location.region}</div>
+                <div><strong>Node:</strong> ${navigationData.current_location.node}</div>
+                <div><strong>Type:</strong> ${navigationData.current_location.type.replace('_', ' ')}</div>
+            `;
         }
         
         // Set z-index and track this modal
@@ -2515,172 +2682,136 @@ class UIManager {
             this.activeModals.push(modal);
         }
         
-        // Render star map
         modal.style.display = 'flex';
+        modal.style.animation = 'fade-in 0.3s ease-out';
+    }
+    
+    selectStarMapNode(nodeData) {
+        // Update selected node
+        this.selectedNode = nodeData;
         
-        // Setup canvas
-        const canvas = document.getElementById('star-map-canvas');
-        const ctx = canvas.getContext('2d');
+        // Check if this node is reachable
+        const currentNode = this.starMapNodes.find(n => n.node.id === window.gameEngine.gameState.star_map.current_node_id);
+        const isConnected = currentNode && currentNode.node.connections.includes(nodeData.id);
         
-        // Resize canvas
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
+        if (!isConnected && nodeData.node.id !== window.gameEngine.gameState.star_map.current_node_id) {
+            this.showNotification('This location is not directly accessible from your current position!', 'warning');
+            return;
+        }
         
-        // Camera state
-        let camera = { x: 0, y: 0, zoom: 1 };
-        let isDragging = false;
-        let dragStart = { x: 0, y: 0 };
+        // Re-render the map to show selection
+        this.showStarMap(window.gameEngine.gameState.star_map, this.lastNavigationData);
         
-        // Mouse events
-        canvas.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            dragStart.x = e.clientX - camera.x;
-            dragStart.y = e.clientY - camera.y;
-        });
+        // Show travel preview
+        const travelPreview = document.getElementById('travel-preview');
+        const travelContent = document.getElementById('travel-preview-content');
         
-        canvas.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                camera.x = e.clientX - dragStart.x;
-                camera.y = e.clientY - dragStart.y;
-                renderMap();
-            }
-        });
-        
-        canvas.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-        
-        canvas.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const scale = e.deltaY > 0 ? 0.9 : 1.1;
-            camera.zoom *= scale;
-            camera.zoom = Math.max(0.5, Math.min(2, camera.zoom));
-            renderMap();
-        });
-        
-        // Render navigation options
-        const optionsList = document.getElementById('navigation-options-list');
-        const currentLocationDiv = document.getElementById('current-location-details');
-        
-        if (navigationData.current_location) {
-            currentLocationDiv.innerHTML = `
-                <div><strong>Region:</strong> ${navigationData.current_location.region}</div>
-                <div><strong>Node:</strong> ${navigationData.current_location.node}</div>
-                <div><strong>Type:</strong> ${navigationData.current_location.type.replace('_', ' ')}</div>
+        if (travelPreview && travelContent) {
+            const node = nodeData.node;
+            const fuelCost = window.gameEngine.gameState.player_stats.in_pod_mode ? 5 : 10;
+            const currentFuel = window.gameEngine.gameState.player_stats.fuel;
+            const canAfford = currentFuel >= fuelCost;
+            
+            travelContent.innerHTML = `
+                <div style="margin-bottom: 1rem;">
+                    <div style="font-size: 1.2rem; color: var(--primary-color); margin-bottom: 0.5rem;">
+                        ${node.name}
+                    </div>
+                    <div style="color: var(--text-secondary); font-size: 0.9rem;">
+                        ${node.type.replace('_', ' ').charAt(0).toUpperCase() + node.type.replace('_', ' ').slice(1)}
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <div style="color: var(--text-secondary); font-size: 0.8rem;">Fuel Cost</div>
+                        <div style="font-size: 1.1rem; color: ${canAfford ? 'var(--success-color)' : 'var(--danger-color)'}">
+                            ⛽ ${fuelCost} / ${currentFuel}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-secondary); font-size: 0.8rem;">Danger Level</div>
+                        <div style="font-size: 1.1rem; color: ${node.danger_level > 0.7 ? 'var(--danger-color)' : node.danger_level > 0.4 ? 'var(--accent-color)' : 'var(--success-color)'}">
+                            ${node.danger_level > 0.7 ? '⚠️ High' : node.danger_level > 0.4 ? '⚡ Medium' : '✓ Low'}
+                        </div>
+                    </div>
+                </div>
+                
+                ${node.has_repair ? '<div style="color: var(--success-color); margin-bottom: 0.5rem;">🔧 Repair services available</div>' : ''}
+                ${node.has_trade ? '<div style="color: var(--primary-color); margin-bottom: 0.5rem;">💰 Trading post available</div>' : ''}
+                ${!node.visited ? '<div style="color: var(--accent-color); margin-bottom: 0.5rem;">🌟 Unexplored location</div>' : ''}
             `;
-        }
-        
-        optionsList.innerHTML = navigationData.options.map(option => {
-            if (option.type === 'node') {
-                return `
-                    <div class="nav-option" onclick="window.gameEngine.navigateToNode('${option.id}')">
-                        <div class="nav-option-header">📍 ${option.name}</div>
-                        <div class="nav-option-details">
-                            Type: ${option.node_type.replace('_', ' ')}<br>
-                            ${option.visited ? '✓ Visited' : '◇ Unvisited'}<br>
-                            ${option.has_repair ? '🔧 Repairs' : ''} ${option.has_trade ? '💰 Trade' : ''}<br>
-                            Fuel Cost: ${option.fuel_cost}
-                        </div>
-                    </div>
-                `;
-            } else if (option.type === 'region') {
-                return `
-                    <div class="nav-option region" onclick="window.gameEngine.navigateToRegion('${option.id}')">
-                        <div class="nav-option-header">🌌 ${option.name}</div>
-                        <div class="nav-option-details">
-                            Region Jump<br>
-                            Fuel Cost: ${option.fuel_cost}
-                        </div>
-                    </div>
-                `;
+            
+            // Update confirm button
+            const confirmBtn = travelPreview.querySelector('button');
+            if (confirmBtn) {
+                confirmBtn.disabled = !canAfford;
+                if (!canAfford) {
+                    confirmBtn.textContent = 'Insufficient Fuel';
+                } else {
+                    confirmBtn.textContent = 'Confirm Travel';
+                }
             }
-        }).join('');
+            
+            // Store pending travel info
+            this.pendingTravel = {
+                nodeId: node.id,
+                fuelCost: fuelCost
+            };
+            
+            travelPreview.style.display = 'block';
+        }
+    }
+    
+    updateNavigationOptions(navigationData) {
+        // Store for later use
+        this.lastNavigationData = navigationData;
         
-        // Render star map
-        function renderMap() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const optionsList = document.getElementById('navigation-options-list');
+        if (!optionsList || !navigationData.options) return;
+        
+        optionsList.innerHTML = '';
+        
+        navigationData.options.forEach(option => {
+            const div = document.createElement('div');
+            div.className = 'nav-option';
+            if (this.selectedNode && this.selectedNode.id === option.id) {
+                div.classList.add('selected');
+            }
             
-            ctx.save();
-            ctx.translate(canvas.width / 2 + camera.x, canvas.height / 2 + camera.y);
-            ctx.scale(camera.zoom, camera.zoom);
+            div.innerHTML = `
+                <div class="nav-option-name">${option.name}</div>
+                <div class="nav-option-type">${option.type === 'node' ? option.node_type.replace('_', ' ') : 'Region Jump'}</div>
+                <div class="nav-option-fuel">Fuel Cost: ${option.fuel_cost}</div>
+                ${option.danger_level ? `<div class="nav-option-danger">Danger: ${Math.round(option.danger_level * 100)}%</div>` : ''}
+            `;
             
-            // Draw region connections
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.lineWidth = 2;
-            Object.values(starMap.regions).forEach(region => {
-                region.connections.forEach(targetId => {
-                    const target = starMap.regions[targetId];
-                    if (target) {
-                        ctx.beginPath();
-                        ctx.moveTo(region.position[0], region.position[1]);
-                        ctx.lineTo(target.position[0], target.position[1]);
-                        ctx.stroke();
-                    }
-                });
-            });
+            div.onclick = () => {
+                // Find the corresponding node data
+                const nodeData = this.starMapNodes.find(n => n.id === option.id);
+                if (nodeData) {
+                    this.selectStarMapNode(nodeData);
+                }
+            };
             
-            // Draw regions
-            Object.values(starMap.regions).forEach(region => {
-                const x = region.position[0];
-                const y = region.position[1];
-                
-                // Region glow
-                const gradient = ctx.createRadialGradient(x, y, 0, x, y, 100);
-                gradient.addColorStop(0, region.config.background.primary_color + '40');
-                gradient.addColorStop(1, 'transparent');
-                
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(x, y, 100, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Region name
-                ctx.fillStyle = '#FFFFFF';
-                ctx.font = 'bold 16px Orbitron';
-                ctx.textAlign = 'center';
-                ctx.fillText(region.name, x, y - 120);
-                
-                // Draw nodes
-                region.nodes.forEach(node => {
-                    const nodeX = x + node.position[0] * 0.5;
-                    const nodeY = y + node.position[1] * 0.5;
-                    
-                    // Node connections
-                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
-                    ctx.lineWidth = 1;
-                    node.connections.forEach(connId => {
-                        const connNode = region.nodes.find(n => n.id === connId);
-                        if (connNode) {
-                            const connX = x + connNode.position[0] * 0.5;
-                            const connY = y + connNode.position[1] * 0.5;
-                            ctx.beginPath();
-                            ctx.moveTo(nodeX, nodeY);
-                            ctx.lineTo(connX, connY);
-                            ctx.stroke();
-                        }
-                    });
-                    
-                    // Node circle
-                    const isCurrentNode = node.id === starMap.current_node;
-                    ctx.fillStyle = isCurrentNode ? '#FFD700' : (node.visited ? '#00FF00' : '#808080');
-                    ctx.beginPath();
-                    ctx.arc(nodeX, nodeY, isCurrentNode ? 8 : 5, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Node name (only for current or hovered)
-                    if (isCurrentNode) {
-                        ctx.fillStyle = '#FFFFFF';
-                        ctx.font = '12px Space Mono';
-                        ctx.fillText(node.name, nodeX, nodeY - 10);
-                    }
-                });
-            });
-            
-            ctx.restore();
+            optionsList.appendChild(div);
+        });
+    }
+    
+    confirmTravel() {
+        if (!this.pendingTravel || !window.gameEngine) return;
+        
+        // Close travel preview
+        const travelPreview = document.getElementById('travel-preview');
+        if (travelPreview) {
+            travelPreview.style.display = 'none';
         }
         
-        renderMap();
+        // Perform navigation
+        window.gameEngine.navigateToNode(this.pendingTravel.nodeId);
+        
+        // Close star map after travel
+        setTimeout(() => this.hideStarMap(), 500);
     }
     
     hideStarMap() {
@@ -2692,11 +2823,14 @@ class UIManager {
                 this.activeModals.splice(index, 1);
             }
             
-            modal.style.display = 'none';
-            // Reset z-index if no other modals are active
-            if (this.activeModals.length === 0) {
-                this.currentModalZIndex = this.modalZIndexBase;
-            }
+            modal.style.animation = 'fade-out 0.3s ease-out';
+            setTimeout(() => {
+                modal.style.display = 'none';
+                // Reset z-index if no other modals are active
+                if (this.activeModals.length === 0) {
+                    this.currentModalZIndex = this.modalZIndexBase;
+                }
+            }, 300);
         }
     }
 }

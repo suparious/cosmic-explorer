@@ -14,19 +14,19 @@ This roadmap outlines planned features and improvements for Cosmic Explorer, org
 ## 🎯 Current Focus (v1.x)
 
 ### Priority 1: Complete Star Map Enhancement
-**Status**: 🚧 Partially Implemented  
+**Status**: ✅ Implemented (2025-06-11)
 **Target**: v1.1
 
-The star map has a foundation but needs:
+The star map now includes:
 - ✅ Basic modal UI exists
 - ✅ Canvas rendering setup
-- ❌ Interactive node selection with click-to-travel
-- ❌ Visual path preview with fuel cost calculation
-- ❌ Animated ship movement between nodes
-- ❌ Region zoom in/out functionality
-- ❌ Node type icons (planet, station, outpost, etc.)
-- ❌ Danger level indicators
-- ❌ Discovered/undiscovered region tracking
+- ✅ Interactive node selection with click-to-travel
+- ✅ Visual path preview with fuel cost calculation
+- ✅ Node type icons (planet, station, outpost, etc.)
+- ✅ Danger level indicators
+- ✅ Discovered/undiscovered location tracking
+- ❌ Animated ship movement between nodes (nice-to-have)
+- ❌ Region zoom in/out functionality (future enhancement)
 
 ### Priority 2: Add Sound Effects
 **Status**: ❌ Not Started  
