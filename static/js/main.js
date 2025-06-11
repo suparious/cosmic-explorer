@@ -2,12 +2,14 @@
 window.addEventListener('DOMContentLoaded', async () => {
     console.log('Initializing Cosmic Explorer...');
     
-    try {
-        // Create global instances
-        window.gameEngine = new GameEngine();
-        
-        // Initialize game engine
-        await window.gameEngine.init();
+    // Function to initialize game after UI is ready
+    const initializeGame = async () => {
+        try {
+            // Create global instances
+            window.gameEngine = new GameEngine();
+            
+            // Initialize game engine
+            await window.gameEngine.init();
         
         // Set global references after initialization
         window.gameUI = window.gameEngine.uiManager;
@@ -20,10 +22,11 @@ window.addEventListener('DOMContentLoaded', async () => {
         
         // Check for existing game state to enable Continue button
         // This will be updated when we receive the actual game state from the server
-        window.gameUI.updateContinueButtonVisibility();
+        if (window.gameUI.screenManager) {
+            window.gameUI.screenManager.updateContinueButtonVisibility();
+        }
         
-        // Setup keyboard shortcuts for save/load
-        window.gameUI.setupKeyboardShortcuts();
+        // Keyboard shortcuts are now initialized automatically by the KeyboardShortcuts module
         
         // Simulate loading
         setTimeout(() => {
@@ -46,8 +49,22 @@ window.addEventListener('DOMContentLoaded', async () => {
                 }
             }, { once: true });
         }, 2000);
-    } catch (error) {
-        console.error('Failed to initialize game:', error);
+        } catch (error) {
+            console.error('Failed to initialize game:', error);
+        }
+    };
+    
+    // Check if UI is already loaded
+    if (window.uiManager) {
+        console.log('UI already loaded, initializing game...');
+        await initializeGame();
+    } else {
+        console.log('Waiting for UI modules to load...');
+        // Wait for UI modules to be ready
+        document.addEventListener('uiReady', async () => {
+            console.log('UI modules loaded, initializing game...');
+            await initializeGame();
+        }, { once: true });
     }
     
     // Handle window resize
@@ -64,7 +81,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     
     // Add keyboard controls
     document.addEventListener('keydown', (e) => {
-        if (!window.gameUI || window.gameUI.currentScreen !== 'game') return;
+        if (!window.gameUI || !window.gameUI.screenManager || window.gameUI.screenManager.getCurrentScreen() !== 'game') return;
         
         switch(e.key) {
             case '1':

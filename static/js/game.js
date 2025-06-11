@@ -50,7 +50,9 @@ class SocketHandler {
         // Mark that we have an active game when we receive game state
         if (state && !state.game_over) {
             this.gameEngine.uiManager.hasActiveGame = true;
-            this.gameEngine.uiManager.updateContinueButtonVisibility();
+            if (this.gameEngine.uiManager.screenManager) {
+                this.gameEngine.uiManager.screenManager.updateContinueButtonVisibility();
+            }
         }
         
         // Dispatch custom event for other components
@@ -481,7 +483,7 @@ class EffectsManager {
         const modal = document.getElementById('choice-modal');
         const modalTitle = document.getElementById('choice-title');
         if (modal && modal.style.display !== 'none' && modalTitle && modalTitle.textContent === 'Pod Augmentations') {
-            this.gameEngine.uiManager.showAugmentationsModal();
+            this.gameEngine.uiManager.showPodModsModal();
         }
     }
 }
@@ -536,17 +538,19 @@ class GameEngine {
             console.log('Creating AudioManager...');
             this.audioManager = new AudioManager();
             
-            console.log('Creating UIManager...');
-            this.uiManager = new UIManager();
-            window.uiManager = this.uiManager; // Set global instance for onclick handlers
-            console.log('UIManager created:', this.uiManager);
+            console.log('Getting UIManager...');
+            // Wait for UI modules to be loaded
+            if (!window.uiManager) {
+                throw new Error('UIManager not yet loaded. Waiting for UI modules...');
+            }
+            this.uiManager = window.uiManager;
+            console.log('UIManager obtained:', this.uiManager);
             
             console.log('Creating CombatUI...');
             this.combatUI = new CombatUI(this.uiManager);
             window.combatUI = this.combatUI;
             
-            // Initialize audio visualizer
-            this.uiManager.initAudioVisualizer();
+            // Audio visualizer is now initialized automatically by the module
             
             // Generate initial space environment
             this.generateSpaceEnvironment();
@@ -694,7 +698,11 @@ class GameEngine {
     showInventory() {
         // Open ship modal directly to inventory tab
         this.uiManager.showShipModal();
-        setTimeout(() => this.uiManager.showShipTab('inventory'), 100);
+        setTimeout(() => {
+            if (this.uiManager.shipModal) {
+                this.uiManager.shipModal.showTab('inventory');
+            }
+        }, 100);
     }
     
     showQuests() {
@@ -724,7 +732,7 @@ class GameEngine {
     showAugmentations() {
         // Show pod augmentations modal
         if (this.gameState && this.gameState.at_repair_location && this.gameState.player_stats.has_flight_pod) {
-            this.uiManager.showAugmentationsModal();
+            this.uiManager.showPodModsModal();
         } else {
             this.uiManager.showNotification('Must be at repair location with pod to view augmentations', 'info');
         }
@@ -742,7 +750,7 @@ class GameEngine {
         }
         
         // Show available augmentations
-        this.uiManager.showPodModsModal(this.gameState);
+        this.uiManager.showPodModsModal();
     }
     
     async fetchNavigationOptions() {
