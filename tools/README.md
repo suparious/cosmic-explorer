@@ -38,6 +38,21 @@ Debugging utility for the Pod Modifications system.
 - Validates augmentation data
 - Helps diagnose UI issues
 
+### `music_debug_helper.js`
+Comprehensive music system debugging tool.
+- Test all music tracks quickly
+- Simulate different game states
+- Check audio visualizer data
+- Volume controls and status monitoring
+
+Usage:
+```javascript
+// Copy entire file contents to browser console, then:
+musicDebug.testAll()     // Test all tracks
+musicDebug.status()      // Show current status
+musicDebug.play('combat') // Play specific track
+```
+
 ## Adding New Tools
 
 When adding new utility scripts:

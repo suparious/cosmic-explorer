@@ -101,13 +101,18 @@ class AudioManager {
                 'station': 'station',
                 'danger': 'danger',
                 'exploration': 'exploration',
-                'combat': 'combat'
+                'combat': 'combat',
+                'peaceful': 'exploration',
+                'mysterious': 'exploration',
+                'hostile': 'danger',
+                'industrial': 'station'
             };
             
             const trackName = themeMap[regionMusicTheme] || 'exploration';
             
             // Only change if different from current track
             if (trackName !== this.currentMusicTrack) {
+                console.log(`Changing music from ${this.currentMusicTrack} to ${trackName} (region: ${regionMusicTheme})`);
                 this.currentMusicTrack = trackName;
                 this.musicEngine.play(trackName);
             }

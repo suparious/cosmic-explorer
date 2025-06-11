@@ -1,0 +1,3 @@
+# Opener
+
+Take a look at my project repo in: `/home/shaun/repos/cosmic-explorer`. I took all the summary documents that each AI assistant previously working on this game, at the end of our conversations, and organized them into the `docs/` folder. I found an icon generator, so I put that in `tools/` and I tried to clean-up the `README.md` file. Please review my currently working game and then make any improvements or housekeeping that I may have missed. If everything looks good, then let's work on the feature enhancements mentioning in the game's documentation. The last time I tried to play, I noticed that <begin feature enhancement request>

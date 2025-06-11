@@ -59,8 +59,16 @@ class SocketHandler {
         }));
         
         // Update music based on game state
-        if (this.gameEngine.audioManager) {
+        if (this.gameEngine.audioManager && this.gameEngine.audioManager.musicEngine) {
             this.gameEngine.audioManager.updateMusicForGameState(state);
+            
+            // Also check for region-based music changes
+            if (state.current_location && state.current_location.region) {
+                const region = state.current_location.region;
+                if (region.music_theme) {
+                    this.gameEngine.audioManager.changeRegionMusic(region.music_theme);
+                }
+            }
         }
         
         // Check for game over or victory
@@ -147,6 +155,11 @@ class SocketHandler {
                     combatUI.showCombatRewards(event.rewards);
                 } else {
                     combatUI.hideCombat();
+                }
+                // Clear combat state for music
+                if (this.gameEngine.gameState) {
+                    this.gameEngine.gameState.in_combat = false;
+                    this.gameEngine.audioManager.updateMusicForGameState(this.gameEngine.gameState);
                 }
                 break;
         }
@@ -247,6 +260,11 @@ class EffectsManager {
                 audioManager.playAlertSound();
                 // Center camera on combat
                 renderer.centerCameraOn(renderer.ship.x, renderer.ship.y);
+                // Mark combat state for music
+                if (this.gameEngine.gameState) {
+                    this.gameEngine.gameState.in_combat = true;
+                    audioManager.updateMusicForGameState(this.gameEngine.gameState);
+                }
                 break;
                 
             case 'damage':
