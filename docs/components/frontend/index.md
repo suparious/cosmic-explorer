@@ -12,7 +12,7 @@ JavaScript-based client components that provide the user interface and game visu
 
 ## 🏗️ Architecture Overview
 
-The frontend uses vanilla JavaScript with a modular architecture:
+The frontend uses vanilla JavaScript with a modular architecture. The UI system has been recently refactored into specialized modules for better maintainability:
 
 ```
 static/js/
@@ -20,19 +20,27 @@ static/js/
 ├── gameEngine.js        # Core game loop
 ├── gameInit.js          # Initialization logic
 ├── renderer.js          # Canvas rendering
-├── ui.js               # UI management
-├── particles.js        # Particle effects
-├── audio.js            # Sound system
-├── musicEngine.js      # Procedural music
-├── combat.js           # Combat interface
-├── podMods.js          # Pod mod visuals
-├── main.js             # Entry point
-├── config.js           # Client config
-├── modules/            # Shared modules
+├── ui.js                # UI manager (coordinator)
+├── ui-loader.js         # Module loader
+├── particles.js         # Particle effects
+├── audio.js             # Sound system
+├── musicEngine.js       # Procedural music
+├── combat.js            # Combat interface
+├── podMods.js           # Pod mod visuals
+├── main.js              # Entry point
+├── config.js            # Client config
+├── modules/             # UI & game modules
+│   ├── screens/         # Screen management
+│   ├── hud/            # HUD components
+│   ├── modals/         # Modal dialogs
+│   ├── notifications/   # User feedback
+│   ├── audio/          # Audio visualization
+│   ├── components/     # Reusable UI parts
+│   ├── utils/          # UI utilities
 │   ├── socketHandler.js
 │   ├── gameActions.js
 │   └── effectsManager.js
-└── components/         # UI components
+└── components/          # Legacy components
     └── modal.js
 ```
 
@@ -60,11 +68,17 @@ static/js/
 
 ### UI Components
 
+#### [[ui-modules|UI Module Architecture]] ⭐ NEW
+- Complete modular refactoring of UI system
+- 15 specialized modules from original 5000+ line file
+- Backward compatible with existing code
+- See full documentation: [[ui-modules|UI Modules]]
+
 #### [[ui-system|UI System]] (ui.js)
-- HUD management
-- Modal dialogs
-- Save/load interface
-- Inventory display
+- Main UIManager coordinator
+- Delegates to specialized modules
+- Backward compatibility layer
+- Global UI state management
 
 #### [[modal-system|Modal System]] (components/modal.js)
 - Reusable modal component

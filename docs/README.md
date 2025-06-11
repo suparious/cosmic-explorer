@@ -29,6 +29,7 @@ Step-by-step guides for developers and players
 Technical documentation for system components
 - [[components/backend/index|Backend Systems]] - Python game engine and API
 - [[components/frontend/index|Frontend Architecture]] - JavaScript UI and rendering
+- [[components/frontend/ui-modules|UI Module Architecture]] ⭐ - Modular UI system (NEW)
 - [[components/frontend/audio-system|Audio System]] - Procedural sound effects
 - [[components/frontend/music-system|Music System]] - Dynamic music engine
 - [[components/game-systems/index|Game Systems]] - Core gameplay mechanics

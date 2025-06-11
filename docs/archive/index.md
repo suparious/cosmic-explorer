@@ -40,7 +40,7 @@ Initial system design and structure before modularization.
 
 | Category | Count | Last Updated |
 |----------|-------|--------------|
-| Status Updates | 15 | 2025-06-11 |
+| Status Updates | 16 | 2025-06-11 |
 | Bug Fixes | 7 | 2025-06-10 |
 | Feature Docs | 11 | 2025-06-11 |
 
@@ -96,10 +96,10 @@ When updating current documentation:
 ## 🔗 Quick Access
 
 ### Recent Additions
-- [[status-updates/2025-01-sound-system-improvements|Sound System Improvements]] - Audio enhancements
-- [[status-updates/2025-01-music-implementation-complete|Music Implementation Complete]] - Music system finalized
+- [[status-updates/2025-06/2025-06-10-documentation-update-summary|Documentation Update Summary]] - Comprehensive docs overhaul
+- [[status-updates/2025-06-11-documentation-housekeeping|Documentation Housekeeping]] - Final cleanup  
+- [[status-updates/2025-06-11-star-map-implementation|Star Map Implementation]] - Click-to-travel feature
 - [[feature-docs/2025-01-music-enhancements|Music Enhancements]] - Detailed music features
-- [[feature-docs/music-system-testing-guide|Music Testing Guide]] - Testing procedures
 - [[feature-docs/sound-system-enhancement-guide|Sound Enhancement Guide]] - Sound implementation
 
 ### Important Milestones
