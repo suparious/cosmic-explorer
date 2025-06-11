@@ -97,6 +97,14 @@ class SocketHandler {
         const combatUI = this.gameEngine.combatUI;
         if (!combatUI) return;
         
+        // Center camera on combat events
+        if (this.gameEngine.renderer && this.gameEngine.renderer.ship) {
+            this.gameEngine.renderer.centerCameraOn(
+                this.gameEngine.renderer.ship.x, 
+                this.gameEngine.renderer.ship.y
+            );
+        }
+        
         switch (event.type) {
             case 'combat_start':
                 const combatState = event.combat_state || (event.result && event.result.combat_state);
@@ -164,6 +172,8 @@ class EffectsManager {
             case 'danger':
                 audioManager.playAlertSound();
                 this.shakeScreen();
+                // Center camera on ship during danger
+                renderer.centerCameraOn(renderer.ship.x, renderer.ship.y);
                 break;
                 
             case 'success':
@@ -174,6 +184,8 @@ class EffectsManager {
             case 'explosion':
                 audioManager.playExplosionSound();
                 renderer.createExplosion(renderer.ship.x, renderer.ship.y);
+                // Center camera on explosion
+                renderer.centerCameraOn(renderer.ship.x, renderer.ship.y);
                 break;
                 
             case 'heal':
@@ -186,6 +198,8 @@ class EffectsManager {
                 audioManager.playAlertSound();
                 this.createPodEjectionEffect();
                 uiManager.showNotification('ESCAPE POD ACTIVATED!', 'warning');
+                // Center camera on pod ejection
+                renderer.centerCameraOn(renderer.ship.x, renderer.ship.y);
                 break;
                 
             case 'purchase':
@@ -195,6 +209,16 @@ class EffectsManager {
                 
             case 'combat_start':
                 audioManager.playAlertSound();
+                // Center camera on combat
+                renderer.centerCameraOn(renderer.ship.x, renderer.ship.y);
+                break;
+                
+            case 'damage':
+            case 'critical_damage':
+                audioManager.playAlertSound();
+                this.shakeScreen();
+                // Center camera on damage event
+                renderer.centerCameraOn(renderer.ship.x, renderer.ship.y);
                 break;
         }
     }
@@ -284,6 +308,9 @@ class EffectsManager {
             renderer.ship.x = startX + (targetX - startX) * easeProgress;
             renderer.ship.y = startY + (targetY - startY) * easeProgress;
             
+            // Update camera to follow ship
+            renderer.centerCameraOn(renderer.ship.x, renderer.ship.y);
+            
             // Create thrust particles
             if (progress < 1 && Math.random() < 0.5) {
                 renderer.createThrustParticles();
@@ -315,6 +342,9 @@ class EffectsManager {
             // Update pod position
             renderer.ship.x = startX + (targetX - startX) * easeProgress + wobble;
             renderer.ship.y = startY + (targetY - startY) * easeProgress;
+            
+            // Update camera to follow pod
+            renderer.centerCameraOn(renderer.ship.x, renderer.ship.y);
             
             // Create small thrust particles
             if (progress < 1 && Math.random() < 0.3) {

@@ -67,6 +67,12 @@ class Renderer {
             podAnimationState: 'idle',
             podAugmentations: []
         };
+        
+        // Center camera on ship initially
+        this.camera.x = this.ship.x;
+        this.camera.y = this.ship.y;
+        this.camera.targetX = this.ship.x;
+        this.camera.targetY = this.ship.y;
     }
     
     resize() {
@@ -126,6 +132,26 @@ class Renderer {
         this.camera.zoom += (this.camera.targetZoom - this.camera.zoom) * smoothing;
     }
     
+    // Center camera on a specific position (for events)
+    centerCameraOn(x, y, immediate = false) {
+        this.camera.targetX = x;
+        this.camera.targetY = y;
+        
+        if (immediate) {
+            this.camera.x = x;
+            this.camera.y = y;
+        }
+    }
+    
+    // Ensure the ship is always visible
+    ensureShipVisible() {
+        if (this.ship) {
+            // Always keep camera centered on ship
+            this.camera.targetX = this.ship.x;
+            this.camera.targetY = this.ship.y;
+        }
+    }
+    
     render(gameState) {
         // Update region theme if changed
         if (gameState && gameState.current_location && gameState.current_location.region) {
@@ -136,6 +162,9 @@ class Renderer {
         const bgBrightness = Math.floor(15 * this.regionTheme.ambientBrightness);
         this.ctx.fillStyle = `rgb(${bgBrightness}, ${bgBrightness}, ${bgBrightness + 5})`;
         this.ctx.fillRect(0, 0, this.width, this.height);
+        
+        // Ensure ship is always visible
+        this.ensureShipVisible();
         
         // Update camera
         this.updateCamera();

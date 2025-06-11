@@ -35,6 +35,8 @@ class EffectsManager {
             case 'danger':
                 this.audioManager.playAlertSound();
                 this.shakeScreen();
+                // Center camera on ship during danger
+                this.renderer.centerCameraOn(this.renderer.ship.x, this.renderer.ship.y);
                 break;
                 
             case 'success':
@@ -45,6 +47,8 @@ class EffectsManager {
             case 'explosion':
                 this.audioManager.playExplosionSound();
                 this.renderer.createExplosion(this.renderer.ship.x, this.renderer.ship.y);
+                // Center camera on explosion
+                this.renderer.centerCameraOn(this.renderer.ship.x, this.renderer.ship.y);
                 break;
                 
             case 'heal':
@@ -57,6 +61,8 @@ class EffectsManager {
                 this.audioManager.playAlertSound();
                 this.createPodEjectionEffect();
                 this.gameEngine.uiManager.showNotification('ESCAPE POD ACTIVATED!', 'warning');
+                // Center camera on pod ejection
+                this.renderer.centerCameraOn(this.renderer.ship.x, this.renderer.ship.y);
                 break;
                 
             case 'purchase':
@@ -66,6 +72,16 @@ class EffectsManager {
                 
             case 'combat_start':
                 this.audioManager.playAlertSound();
+                // Center camera on combat
+                this.renderer.centerCameraOn(this.renderer.ship.x, this.renderer.ship.y);
+                break;
+                
+            case 'damage':
+            case 'critical_damage':
+                this.audioManager.playAlertSound();
+                this.shakeScreen();
+                // Center camera on damage event
+                this.renderer.centerCameraOn(this.renderer.ship.x, this.renderer.ship.y);
                 break;
         }
     }
@@ -153,6 +169,9 @@ class EffectsManager {
             this.renderer.ship.x = startX + (targetX - startX) * easeProgress;
             this.renderer.ship.y = startY + (targetY - startY) * easeProgress;
             
+            // Update camera to follow ship
+            this.renderer.centerCameraOn(this.renderer.ship.x, this.renderer.ship.y);
+            
             // Create thrust particles
             if (progress < 1 && Math.random() < 0.5) {
                 this.renderer.createThrustParticles();
@@ -183,6 +202,9 @@ class EffectsManager {
             // Update pod position
             this.renderer.ship.x = startX + (targetX - startX) * easeProgress + wobble;
             this.renderer.ship.y = startY + (targetY - startY) * easeProgress;
+            
+            // Update camera to follow pod
+            this.renderer.centerCameraOn(this.renderer.ship.x, this.renderer.ship.y);
             
             // Create small thrust particles
             if (progress < 1 && Math.random() < 0.3) {
