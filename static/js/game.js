@@ -582,10 +582,13 @@ class GameEngine {
             try {
                 console.log('Creating AudioManager...');
                 this.audioManager = new AudioManager();
+                // Wait for async init to complete
+                await this.audioManager.init();
                 console.log('✓ AudioManager created successfully');
             } catch (error) {
                 console.error('✗ Failed to create AudioManager:', error);
-                throw error;
+                // Audio is not critical, continue without it
+                console.warn('Continuing without audio support');
             }
             
             // Initialize UIManager

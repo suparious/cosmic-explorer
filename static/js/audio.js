@@ -17,12 +17,24 @@ class AudioManager {
         this.masterGainNode.connect(this.audioContext.destination);
         this.masterGainNode.gain.value = this.masterVolume;
         
-        this.init();
+        // Don't call init() here - it's now called explicitly
     }
     
     async init() {
+        // Wait a bit for the modular MusicEngine to be available on window
+        let attempts = 0;
+        while (!window.MusicEngine && attempts < 10) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        if (!window.MusicEngine) {
+            console.error('MusicEngine not available after waiting');
+            return;
+        }
+        
         // Initialize the advanced music engine
-        this.musicEngine = new MusicEngine();
+        this.musicEngine = new window.MusicEngine();
         await this.musicEngine.init();
         
         // Set initial volumes
