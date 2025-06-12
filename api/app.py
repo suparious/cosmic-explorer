@@ -403,11 +403,17 @@ def perform_action(session_id):
         
         # Emit event if present
         if result.get('event'):
-            socketio.emit('game_event', {
+            event_data = {
                 'type': result['event_type'],
-                'message': result['event'],
-                'choices': result.get('choices', [])
-            }, room=session_id)
+                'message': result['event']
+            }
+            
+            # Only include choices if they exist and are non-empty
+            choices = result.get('choices', [])
+            if choices and len(choices) > 0:
+                event_data['choices'] = choices
+            
+            socketio.emit('game_event', event_data, room=session_id)
         
         return jsonify({
             "success": result.get("success", False),

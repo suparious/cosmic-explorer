@@ -90,6 +90,7 @@ class SocketHandler {
         }
         
         // Show choices if available (except for combat which uses its own UI)
+        // Ensure choices exist, are an array, and have at least one element
         if (event.choices && Array.isArray(event.choices) && event.choices.length > 0 && 
             event.type !== 'combat_start' && event.type !== 'combat') {
             // Validate that choices are strings and not empty

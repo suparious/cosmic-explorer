@@ -473,6 +473,15 @@ export class SaveLoadModal {
      * @param {number} slot - The slot number
      */
     async loadFromSlot(slot) {
+        console.warn('[DEBUG] loadFromSlot called with slot:', slot);
+        console.trace('Stack trace for loadFromSlot call');
+        
+        // Safety check - don't load if we're in the middle of starting a new game
+        if (window.gameEngine && window.gameEngine._startingNewGame) {
+            console.warn('[DEBUG] Blocked loadFromSlot during new game start');
+            return;
+        }
+        
         const sessionId = window.gameEngine?.sessionId || 'default';
         
         if (this.uiManager.modalManager) {

@@ -688,6 +688,11 @@ class GameEngine {
     }
     
     async startNewGame() {
+        console.log('[DEBUG] startNewGame called');
+        
+        // Set flag to prevent load operations during new game start
+        this._startingNewGame = true;
+        
         // Clear any existing save data to force new star map generation
         localStorage.removeItem('cosmic_explorer_save');
         
@@ -708,6 +713,12 @@ class GameEngine {
             if (this.gameState.current_location && this.gameState.current_location.region) {
                 this.renderer.updateRegionTheme(this.gameState.current_location.region);
             }
+            
+            // Clear the flag after successful initialization
+            this._startingNewGame = false;
+        } else {
+            // Clear flag on error too
+            this._startingNewGame = false;
         }
     }
     

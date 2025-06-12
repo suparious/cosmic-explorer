@@ -512,11 +512,12 @@ body {
     z-index: 2;
 }
 
-/* Modal close button styling */
+/* Modal close button styling - ensure proper positioning */
 .modal-close {
     position: absolute;
     top: 1rem;
     right: 1rem;
+    left: auto !important;  /* Force right alignment */
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
     color: var(--text-primary);
