@@ -6,7 +6,7 @@
  * @param {string} filterType - Type of filter (lowpass, highpass, bandpass)
  * @param {number} frequency - Filter frequency
  * @param {number} Q - Filter Q value
- * @returns {AudioNode} The filtered noise source
+ * @returns {Object} Object containing the filter output and source node reference
  */
 export function createFilteredNoise(context, filterType, frequency, Q) {
     const bufferSize = context.sampleRate * 2;
@@ -29,6 +29,8 @@ export function createFilteredNoise(context, filterType, frequency, Q) {
     noise.connect(filter);
     noise.start();
     
+    // Return filter as the audio node, but attach source reference
+    filter.sourceNode = noise;
     return filter;
 }
 

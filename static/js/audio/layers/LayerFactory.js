@@ -1,19 +1,49 @@
 // Layer factory for creating and managing audio layers
 
-// Import all layer types
+// Import base layers
 import { DroneLayer } from './base/DroneLayer.js';
 import { PadLayer } from './base/PadLayer.js';
 import { SubBassLayer } from './base/SubBassLayer.js';
+import { HeartbeatLayer } from './base/HeartbeatLayer.js';
+import { BreathingLayer } from './base/BreathingLayer.js';
 
 // Import atmospheric layers
 import { ShimmerLayer } from './atmospheric/ShimmerLayer.js';
-// import { WhisperLayer } from './atmospheric/WhisperLayer.js';
-// import { BreathLayer } from './atmospheric/BreathLayer.js';
+import { WhisperLayer } from './atmospheric/WhisperLayer.js';
+import { BreathLayer } from './atmospheric/BreathLayer.js';
+import { AirFlowLayer } from './atmospheric/AirFlowLayer.js';
+import { CommChatterLayer } from './atmospheric/CommChatterLayer.js';
+import { StaticLayer } from './atmospheric/StaticLayer.js';
+import { RadioStaticLayer } from './atmospheric/RadioStaticLayer.js';
+
+// Import mechanical layers
+import { MechanicalLayer } from './mechanical/MechanicalLayer.js';
+import { HydraulicLayer } from './mechanical/HydraulicLayer.js';
+import { MetalStressLayer } from './mechanical/MetalStressLayer.js';
+import { SystemBeepLayer } from './mechanical/SystemBeepLayer.js';
+
+// Import musical layers
+import { HarmonicLayer } from './musical/HarmonicLayer.js';
+import { ArpeggioLayer } from './musical/ArpeggioLayer.js';
+import { BassLineLayer } from './musical/BassLineLayer.js';
+import { ChimeLayer } from './musical/ChimeLayer.js';
+import { LeadLayer } from './musical/LeadLayer.js';
+import { RhythmLayer } from './musical/RhythmLayer.js';
+import { PercussionLayer } from './musical/PercussionLayer.js';
+import { PowerChordLayer } from './musical/PowerChordLayer.js';
+import { BrassStabLayer } from './musical/BrassStabLayer.js';
 
 // Import tension layers
 import { PulseLayer } from './tension/PulseLayer.js';
-
-// Import other layer types as they're created...
+import { DissonanceLayer } from './tension/DissonanceLayer.js';
+import { WarningLayer } from './tension/WarningLayer.js';
+import { AlarmLayer } from './tension/AlarmLayer.js';
+import { ClusterLayer } from './tension/ClusterLayer.js';
+import { RadarSweepLayer } from './tension/RadarSweepLayer.js';
+import { TensionRiserLayer } from './tension/TensionRiserLayer.js';
+import { AnxietyPulseLayer } from './tension/AnxietyPulseLayer.js';
+import { SirenLayer } from './tension/SirenLayer.js';
+import { ExplosionRumbleLayer } from './tension/ExplosionRumbleLayer.js';
 
 /**
  * Factory class for creating audio layers
@@ -32,16 +62,46 @@ export class LayerFactory {
         this.register(DroneLayer);
         this.register(PadLayer);
         this.register(SubBassLayer);
+        this.register(HeartbeatLayer);
+        this.register(BreathingLayer);
         
         // Atmospheric layers
         this.register(ShimmerLayer);
+        this.register(WhisperLayer);
+        this.register(BreathLayer);
+        this.register(AirFlowLayer);
+        this.register(CommChatterLayer);
+        this.register(StaticLayer);
+        this.register(RadioStaticLayer);
+        
+        // Mechanical layers
+        this.register(MechanicalLayer);
+        this.register(HydraulicLayer);
+        this.register(MetalStressLayer);
+        this.register(SystemBeepLayer);
+        
+        // Musical layers
+        this.register(HarmonicLayer);
+        this.register(ArpeggioLayer);
+        this.register(BassLineLayer);
+        this.register(ChimeLayer);
+        this.register(LeadLayer);
+        this.register(RhythmLayer);
+        this.register(PercussionLayer);
+        this.register(PowerChordLayer);
+        this.register(BrassStabLayer);
         
         // Tension layers
         this.register(PulseLayer);
-        
-        // Register other layers as they're imported
-        // this.register(WhisperLayer);
-        // etc...
+        this.register(DissonanceLayer);
+        this.register(WarningLayer);
+        this.register(AlarmLayer);
+        this.register(ClusterLayer);
+        this.register(RadarSweepLayer);
+        this.register(TensionRiserLayer);
+        this.register(AnxietyPulseLayer);
+        this.register(SirenLayer);
+        this.register(ExplosionRumbleLayer);
     }
     
     /**
