@@ -35,6 +35,9 @@ class GameActions {
         // Clear any existing save data to force new star map generation
         localStorage.removeItem('cosmic_explorer_save');
         
+        // Close any open modals before starting new game
+        this.gameEngine.uiManager.closeAllModals();
+        
         const response = await fetch(`${GameConfig.game.apiUrl}/game/new`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -52,6 +55,9 @@ class GameActions {
             if (this.gameEngine.gameState.current_location && this.gameEngine.gameState.current_location.region) {
                 this.gameEngine.renderer.updateRegionTheme(this.gameEngine.gameState.current_location.region);
             }
+            
+            // Show welcome message
+            this.gameEngine.uiManager.addEventMessage('Welcome to Cosmic Explorer! Your journey begins...', 'info');
         }
         
         return result;

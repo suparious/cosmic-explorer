@@ -98,13 +98,19 @@ class SocketHandler {
             );
             
             if (validChoices.length > 0) {
-                this.gameEngine.uiManager.showChoiceModal(
-                    event.message || 'Make a Choice', 
-                    validChoices, 
-                    (choice) => {
-                        this.gameEngine.sendAction('choice', { choice });
-                    }
-                );
+                // Only show modal if we have a valid message/title
+                const modalTitle = event.message || event.title || 'Make a Choice';
+                if (modalTitle && modalTitle.trim().length > 0) {
+                    this.gameEngine.uiManager.showChoiceModal(
+                        modalTitle, 
+                        validChoices, 
+                        (choice) => {
+                            this.gameEngine.sendAction('choice', { choice });
+                        }
+                    );
+                } else {
+                    console.warn('Event had no valid title/message for choices:', event);
+                }
             } else {
                 console.warn('Event had invalid choices:', event.choices);
             }

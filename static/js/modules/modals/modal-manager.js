@@ -126,37 +126,48 @@ export class ModalManager {
         const choiceList = document.getElementById('choice-list');
         const modalFooter = modal?.querySelector('.modal-footer');
         
-        if (!modal || !titleEl || !choiceList) return;
+        if (!modal || !titleEl || !choiceList) {
+            console.error('Choice modal elements not found');
+            return;
+        }
+        
+        // Clear any existing content first
+        choiceList.innerHTML = '';
         
         // Validate choices array
         if (!Array.isArray(choices) || choices.length === 0) {
             console.error('Invalid choices array:', choices);
-            // Show error message instead of empty modal
-            titleEl.textContent = 'Error';
-            choiceList.innerHTML = '<p style="color: var(--danger-color); text-align: center;">No choices available. Please try again.</p>';
-            if (modalFooter) modalFooter.style.display = 'block';
-        } else {
-            // Set title
-            titleEl.textContent = title;
-            
-            // Clear previous choices
-            choiceList.innerHTML = '';
-            
-            // Hide footer for normal choices
-            if (modalFooter) modalFooter.style.display = 'none';
-            
-            // Add choices
-            choices.forEach((choice, index) => {
-                const btn = document.createElement('button');
-                btn.className = 'choice-btn';
-                btn.textContent = `${index + 1}. ${choice}`;
-                btn.onclick = () => {
-                    this.hideChoiceModal();
-                    if (callback) callback(index + 1);
-                };
-                choiceList.appendChild(btn);
-            });
+            // Don't show the modal if there are no valid choices
+            return;
         }
+        
+        // Filter out any empty or invalid choices
+        const validChoices = choices.filter(choice => 
+            typeof choice === 'string' && choice.trim().length > 0
+        );
+        
+        if (validChoices.length === 0) {
+            console.error('No valid choices after filtering:', choices);
+            return;
+        }
+        
+        // Set title
+        titleEl.textContent = title || 'Make a Choice';
+        
+        // Hide footer for normal choices
+        if (modalFooter) modalFooter.style.display = 'none';
+        
+        // Add choices
+        validChoices.forEach((choice, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'choice-btn';
+            btn.textContent = `${index + 1}. ${choice}`;
+            btn.onclick = () => {
+                this.hideChoiceModal();
+                if (callback) callback(index + 1);
+            };
+            choiceList.appendChild(btn);
+        });
         
         // Set up close handlers
         this.setupChoiceModalHandlers(modal, callback);

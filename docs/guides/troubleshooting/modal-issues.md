@@ -1,273 +1,106 @@
----
-title: Modal Dialog Troubleshooting
-tags: [troubleshooting, frontend, ui, modals]
-created: 2025-06-10
-updated: 2025-06-10
-status: active
-source: archive/bug-fixes/modal-z-index-fix.md, archive/bug-fixes/modal-exit-button-fix.md
----
+# Modal Issues Troubleshooting Guide
 
-# Modal Dialog Troubleshooting
+## Common Modal Problems and Solutions
 
-Common issues and solutions for the modal dialog system in Cosmic Explorer.
+### Choice Modal Appearing with No Choices
 
-## Modal Z-Index Layering Issues
+**Problem**: The "Make a Choice" modal appears but shows no choice buttons, trapping the player.
 
-### Problem Description
-Notification modals, confirmation dialogs, and question prompts appearing behind other modals like Save/Load, Ship/Inventory, or Pod Mods modals.
+**Causes**:
+1. Backend sending events with empty or invalid `choices` array
+2. Socket handler not properly validating choices before showing modal
+3. Stale events from previous sessions
 
-### Root Cause
-Static z-index values in CSS causing improper layering when multiple modals are open:
-- Choice modals had z-index: 1001
-- Save/Load modal had z-index: 1002
-- Other modals had incrementing values
+**Solutions Implemented**:
+1. Added validation in `ModalManager.showChoiceModal()` to reject empty/invalid choices
+2. Enhanced socket handler validation to check for valid choices and titles
+3. Added `closeAllModals()` call when starting new game
+4. Modal won't show if no valid choices exist
 
-### Solution: Dynamic Z-Index Management
+### Close Button Not Working
 
-#### Implementation Details
-The `UIManager` class now includes dynamic z-index management:
+**Problem**: The X close button shows animations on hover/click but doesn't actually close the modal.
 
-```javascript
-class UIManager {
-    constructor() {
-        this.modalZIndexBase = 1000;
-        this.currentModalZIndex = 1000;
-        this.activeModals = [];
-    }
-    
-    showModal(modalElement) {
-        this.currentModalZIndex += 10;
-        modalElement.style.zIndex = this.currentModalZIndex;
-        this.activeModals.push(modalElement);
-    }
-    
-    hideModal(modalElement) {
-        this.activeModals = this.activeModals.filter(m => m !== modalElement);
-        if (this.activeModals.length === 0) {
-            this.currentModalZIndex = this.modalZIndexBase;
-        }
-    }
-}
-```
+**Causes**:
+1. Event handlers not properly attached
+2. Z-index issues with modal backdrop
+3. Multiple click handlers conflicting
 
-#### Affected Components
-- `showChoiceModal()` / `hideChoiceModal()`
-- `showSaveLoadModal()` / `hideSaveLoadModal()`  
-- `showPodModsModal()` / `hidePodModsModal()`
-- `showFoodModal()` / `hideFoodModal()`
-- `showShipModal()` / `hideShipModal()`
-- `showStarMap()` / `hideStarMap()`
+**Solutions Implemented**:
+1. Fixed event handler setup in `setupChoiceModalHandlers()`
+2. Added proper z-index management for modal backdrop and content
+3. Ensured cleanup of old handlers before attaching new ones
 
-### Testing the Fix
-1. Open Ship/Inventory modal
-2. Try to sell an item - sell dialog should appear on top
-3. Open Save/Load modal
-4. Try to overwrite a save - confirmation should appear on top
+### Close Button Position Wrong
 
-## Modal Close Button Issues
+**Problem**: Close button appears on the left side instead of top-right.
 
-### Problem Description
-Exit/close buttons on modals not functioning properly or not visible.
+**Causes**:
+1. CSS positioning conflicts
+2. Modal content structure issues
 
-### Common Causes
-1. **Event Handler Not Attached**: Close button click handler not properly bound
-2. **Button Hidden**: CSS styling hiding the button
-3. **Z-Index Issues**: Button rendered below modal overlay
+**Solutions Implemented**:
+1. Added explicit CSS for choice modal structure
+2. Set proper z-index for modal backdrop (1) and content (2)
+3. Ensured close button has `position: absolute` with `top: 1rem` and `right: 1rem`
 
-### Solutions
+## Testing Modal Functionality
 
-#### Ensure Event Handlers
-```javascript
-// Correct approach
-const closeButton = modal.querySelector('.close-button');
-closeButton.addEventListener('click', () => {
-    uiManager.hideModal(modal);
-});
+To test if modals are working correctly:
 
-// Avoid inline handlers
-// ❌ <button onclick="closeModal()">
-```
+1. **Test Empty Choices**:
+   ```javascript
+   // This should NOT show a modal
+   window.uiManager.showChoiceModal('Test', [], () => {});
+   ```
 
-#### Verify Button Visibility
-```css
-.modal .close-button {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 1; /* Above modal content */
-    cursor: pointer;
-    /* Ensure visible */
-    display: block;
-    opacity: 1;
-}
-```
+2. **Test Valid Choices**:
+   ```javascript
+   // This should show a working modal
+   window.uiManager.showChoiceModal('Test Modal', ['Option 1', 'Option 2'], (choice) => {
+       console.log('Selected:', choice);
+   });
+   ```
 
-## Modal Overflow Issues
+3. **Test Close Functionality**:
+   - Click the X button - modal should close
+   - Press ESC key - modal should close
+   - Click backdrop - modal should close
 
-### Problem Description
-Modal content extending beyond viewport or being cut off.
+4. **Test Modal Cleanup**:
+   ```javascript
+   // Force close all modals
+   window.uiManager.closeAllModals();
+   ```
 
-### Solution
-```css
-.modal-content {
-    max-height: 80vh;
-    overflow-y: auto;
-    margin: 10vh auto;
-}
+## Debugging Tips
 
-/* For mobile responsiveness */
-@media (max-width: 768px) {
-    .modal-content {
-        max-height: 90vh;
-        margin: 5vh auto;
-        width: 95%;
-    }
-}
-```
+1. **Check Console for Errors**:
+   - Look for "Invalid choices array" messages
+   - Check for "Choice modal elements not found" errors
 
-## Modal Background Scroll
+2. **Inspect Modal State**:
+   ```javascript
+   // Check active modals
+   console.log(window.uiManager.modalManager.activeModals);
+   
+   // Check modal z-index
+   const modal = document.getElementById('choice-modal');
+   console.log('Modal z-index:', modal.style.zIndex);
+   ```
 
-### Problem Description
-Page scrolling while modal is open, causing poor UX.
+3. **Force Modal Reset**:
+   ```javascript
+   // Reset modal to clean state
+   const modal = document.getElementById('choice-modal');
+   modal.style.display = 'none';
+   modal.style.animation = 'none';
+   document.getElementById('choice-list').innerHTML = '';
+   ```
 
-### Solution
-```javascript
-// When showing modal
-document.body.style.overflow = 'hidden';
+## Prevention
 
-// When hiding modal
-document.body.style.overflow = '';
-```
-
-## Multiple Modal Management
-
-### Problem Description
-Opening multiple modals simultaneously causing conflicts.
-
-### Best Practices
-1. **Modal Stack**: Track open modals in array
-2. **ESC Key Handling**: Close only topmost modal
-3. **Backdrop Clicks**: Handle only for topmost modal
-
-```javascript
-class ModalManager {
-    constructor() {
-        this.modalStack = [];
-    }
-    
-    open(modal) {
-        // Close existing modals if exclusive
-        if (modal.exclusive) {
-            this.closeAll();
-        }
-        this.modalStack.push(modal);
-        this.updateEscHandler();
-    }
-    
-    close(modal) {
-        this.modalStack = this.modalStack.filter(m => m !== modal);
-        this.updateEscHandler();
-    }
-    
-    updateEscHandler() {
-        // ESC closes only the topmost modal
-        document.onkeydown = (e) => {
-            if (e.key === 'Escape' && this.modalStack.length > 0) {
-                this.close(this.modalStack[this.modalStack.length - 1]);
-            }
-        };
-    }
-}
-```
-
-## Performance Issues
-
-### Problem Description
-Modals causing lag or stuttering, especially with animations.
-
-### Solutions
-
-#### Optimize Animations
-```css
-.modal {
-    /* Use transform for better performance */
-    transform: translateY(-100%);
-    transition: transform 0.3s ease-out;
-}
-
-.modal.show {
-    transform: translateY(0);
-}
-
-/* Avoid animating expensive properties */
-/* ❌ transition: all 0.3s; */
-```
-
-#### Reduce Repaints
-```javascript
-// Batch DOM updates
-const fragment = document.createDocumentFragment();
-items.forEach(item => {
-    const element = createItemElement(item);
-    fragment.appendChild(element);
-});
-modalContent.appendChild(fragment);
-```
-
-## Debugging Modal Issues
-
-### Console Commands
-```javascript
-// Check active modals
-console.log(uiManager.activeModals);
-
-// Check z-index values
-document.querySelectorAll('.modal').forEach(m => {
-    console.log(m.id, m.style.zIndex);
-});
-
-// Force close all modals
-uiManager.closeAllModals();
-```
-
-### Common Error Messages
-- `Cannot read property 'addEventListener' of null` - Element not found
-- `Maximum call stack size exceeded` - Infinite recursion in show/hide
-- `Modal is not defined` - Scope or timing issue
-
-## Best Practices
-
-### Modal Structure
-```html
-<div class="modal" id="example-modal">
-    <div class="modal-backdrop"></div>
-    <div class="modal-content">
-        <button class="close-button" aria-label="Close">×</button>
-        <h2>Modal Title</h2>
-        <div class="modal-body">
-            <!-- Content -->
-        </div>
-        <div class="modal-footer">
-            <button class="confirm">Confirm</button>
-            <button class="cancel">Cancel</button>
-        </div>
-    </div>
-</div>
-```
-
-### Accessibility
-- Use `role="dialog"` and `aria-modal="true"`
-- Trap focus within modal
-- Provide keyboard navigation
-- Include close button with `aria-label`
-
-## Related Documentation
-
-- [[components/frontend/ui-system|UI System Architecture]]
-- [[guides/development/frontend-guide|Frontend Development Guide]]
-- [[references/ui-components|UI Component Reference]]
-- [[archive/bug-fixes/modal-z-index-fix|Original Z-Index Fix]]
-
----
-
-Parent: [[guides/troubleshooting/index|Troubleshooting]] | [[README|Documentation Hub]]
+1. Always validate event data before showing modals
+2. Clear modals when changing game states
+3. Use proper event handler cleanup
+4. Test modal functionality after any UI changes

@@ -53,6 +53,27 @@ musicDebug.status()      // Show current status
 musicDebug.play('combat') // Play specific track
 ```
 
+### `modal_debug_helper.js`
+Modal system debugging and repair tool.
+- Test modal functionality
+- Fix stuck/broken modals
+- Check modal state and positioning
+- Simulate choice events
+
+Usage:
+```javascript
+// Load in browser console:
+const script = document.createElement('script');
+script.src = '/static/tools/modal_debug_helper.js';
+document.head.appendChild(script);
+
+// Common commands:
+modalDebug.help()           // Show all commands
+modalDebug.fixStuckModal()  // Fix stuck modal
+modalDebug.checkState()     // Check modal state
+modalDebug.testValidModal() // Test working modal
+```
+
 ## Adding New Tools
 
 When adding new utility scripts:

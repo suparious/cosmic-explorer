@@ -22,15 +22,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Contributing guidelines
 - EditorConfig for consistent code style
 - Improved .gitignore file
+- Modal debug helper tool for troubleshooting UI issues
+- Emergency modal recovery commands
 
 ### Changed
 - Renamed .env-example to .env.example (standard naming)
 - Reorganized documentation into proper folders
 - Updated README.md with clearer structure
+- Enhanced modal validation to prevent empty choice modals
+- Improved game initialization flow with better error handling
 
 ### Fixed
+- Critical bug: Choice modal appearing with no choices on new game start
+- Modal close button not functioning properly
+- Modal close button position (now correctly positioned top-right)
 - Project structure improvements
 - Better separation of concerns
+- Socket event validation to prevent invalid modal triggers
 
 ## [0.1.0] - 2024-01-15
 
