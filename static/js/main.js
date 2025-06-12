@@ -4,6 +4,27 @@ window.addEventListener('DOMContentLoaded', async () => {
     
     // Function to initialize game after UI is ready
     const initializeGame = async () => {
+        // Add timeout handling for initialization
+        const initTimeout = setTimeout(() => {
+            const loadingText = document.querySelector('.loading-text');
+            if (loadingText && loadingText.textContent === 'Initializing ship systems...') {
+                loadingText.textContent = 'Initialization taking longer than expected...';
+                console.warn('Game initialization timeout - checking for issues');
+                
+                // Check if critical components exist
+                if (!window.gameEngine) {
+                    console.error('GameEngine not created');
+                } else {
+                    console.log('GameEngine exists:', window.gameEngine);
+                    if (!window.gameEngine.renderer) console.error('Renderer not created');
+                    if (!window.gameEngine.particleSystem) console.error('ParticleSystem not created');
+                    if (!window.gameEngine.audioManager) console.error('AudioManager not created');
+                    if (!window.gameEngine.uiManager) console.error('UIManager not created');
+                    if (!window.gameEngine.combatUI) console.error('CombatUI not created');
+                }
+            }
+        }, 10000); // 10 second timeout
+        
         try {
             // Create global instances
             window.gameEngine = new GameEngine();
@@ -28,6 +49,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         
         // Keyboard shortcuts are now initialized automatically by the KeyboardShortcuts module
         
+        // Clear timeout on successful init
+        clearTimeout(initTimeout);
+        
         // Simulate loading
         setTimeout(() => {
             // Hide loading screen and show main menu
@@ -51,6 +75,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         }, 2000);
         } catch (error) {
             console.error('Failed to initialize game:', error);
+            clearTimeout(initTimeout);
         }
     };
     

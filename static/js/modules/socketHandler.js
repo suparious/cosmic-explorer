@@ -90,10 +90,24 @@ class SocketHandler {
         }
         
         // Show choices if available (except for combat which uses its own UI)
-        if (event.choices && event.choices.length > 0 && event.type !== 'combat_start' && event.type !== 'combat') {
-            this.gameEngine.uiManager.showChoiceModal(event.message, event.choices, (choice) => {
-                this.gameEngine.sendAction('choice', { choice });
-            });
+        if (event.choices && Array.isArray(event.choices) && event.choices.length > 0 && 
+            event.type !== 'combat_start' && event.type !== 'combat') {
+            // Validate that choices are strings and not empty
+            const validChoices = event.choices.filter(choice => 
+                typeof choice === 'string' && choice.trim().length > 0
+            );
+            
+            if (validChoices.length > 0) {
+                this.gameEngine.uiManager.showChoiceModal(
+                    event.message || 'Make a Choice', 
+                    validChoices, 
+                    (choice) => {
+                        this.gameEngine.sendAction('choice', { choice });
+                    }
+                );
+            } else {
+                console.warn('Event had invalid choices:', event.choices);
+            }
         }
     }
     

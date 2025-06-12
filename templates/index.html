@@ -165,9 +165,14 @@
 
                 <!-- Modal for choices -->
                 <div id="choice-modal" class="modal" style="display: none;">
+                    <div class="modal-backdrop"></div>
                     <div class="modal-content">
+                        <button class="modal-close" aria-label="Close modal">×</button>
                         <h3 id="choice-title">Make a Choice</h3>
                         <div id="choice-list" class="choice-list"></div>
+                        <div class="modal-footer" style="margin-top: 1rem; display: none;">
+                            <button class="menu-btn" onclick="if(window.uiManager) uiManager.hideChoiceModal()">Cancel</button>
+                        </div>
                     </div>
                 </div>
 
@@ -245,9 +250,5 @@
     <script src="{{ url_for('static', filename='js/combat.js') }}"></script>
     <script src="{{ url_for('static', filename='js/game.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <!-- Are these still needed? 
-    <script src="{{ url_for('static', filename='js/podMods.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/gameInit.js') }}"></script>
-    -->
 </body>
 </html>

@@ -96,10 +96,24 @@ class SocketHandler {
         }
         
         // Show choices if available (except for combat which uses its own UI)
-        if (event.choices && event.choices.length > 0 && event.type !== 'combat_start' && event.type !== 'combat') {
-            this.gameEngine.uiManager.showChoiceModal(event.message, event.choices, (choice) => {
-                this.gameEngine.sendAction('choice', { choice });
-            });
+        if (event.choices && Array.isArray(event.choices) && event.choices.length > 0 && 
+            event.type !== 'combat_start' && event.type !== 'combat') {
+            // Validate that choices are strings and not empty
+            const validChoices = event.choices.filter(choice => 
+                typeof choice === 'string' && choice.trim().length > 0
+            );
+            
+            if (validChoices.length > 0) {
+                this.gameEngine.uiManager.showChoiceModal(
+                    event.message || 'Make a Choice', 
+                    validChoices, 
+                    (choice) => {
+                        this.gameEngine.sendAction('choice', { choice });
+                    }
+                );
+            } else {
+                console.warn('Event had invalid choices:', event.choices);
+            }
         }
     }
     
@@ -514,53 +528,133 @@ class GameEngine {
     
     async init() {
         try {
-            console.log('GameEngine.init() starting...');
+            console.log('GameEngine.init() starting with enhanced error handling...');
             
             // Initialize socket handler
-            this.socketHandler = new SocketHandler(this);
-            this.socketHandler.init();
+            try {
+                console.log('Initializing socket handler...');
+                this.socketHandler = new SocketHandler(this);
+                this.socketHandler.init();
+                console.log('✓ Socket handler initialized');
+            } catch (error) {
+                console.error('✗ Failed to initialize socket handler:', error);
+                throw error;
+            }
             
             // Initialize effects manager
-            this.effectsManager = new EffectsManager(this);
+            try {
+                console.log('Initializing effects manager...');
+                this.effectsManager = new EffectsManager(this);
+                console.log('✓ Effects manager initialized');
+            } catch (error) {
+                console.error('✗ Failed to initialize effects manager:', error);
+                throw error;
+            }
             
             // Initialize subsystems
             const canvas = document.getElementById('game-canvas');
             if (!canvas) {
                 throw new Error('Canvas element not found');
             }
+            console.log('✓ Canvas element found');
             
-            console.log('Creating Renderer...');
-            this.renderer = new Renderer(canvas);
-            
-            console.log('Creating ParticleSystem...');
-            this.particleSystem = new ParticleSystem();
-            
-            console.log('Creating AudioManager...');
-            this.audioManager = new AudioManager();
-            
-            console.log('Getting UIManager...');
-            // Wait for UI modules to be loaded
-            if (!window.uiManager) {
-                throw new Error('UIManager not yet loaded. Waiting for UI modules...');
+            // Initialize Renderer
+            try {
+                console.log('Creating Renderer...');
+                this.renderer = new Renderer(canvas);
+                console.log('✓ Renderer created successfully');
+            } catch (error) {
+                console.error('✗ Failed to create Renderer:', error);
+                throw error;
             }
-            this.uiManager = window.uiManager;
-            console.log('UIManager obtained:', this.uiManager);
             
-            console.log('Creating CombatUI...');
-            this.combatUI = new CombatUI(this.uiManager);
-            window.combatUI = this.combatUI;
+            // Initialize ParticleSystem
+            try {
+                console.log('Creating ParticleSystem...');
+                this.particleSystem = new ParticleSystem();
+                console.log('✓ ParticleSystem created successfully');
+            } catch (error) {
+                console.error('✗ Failed to create ParticleSystem:', error);
+                throw error;
+            }
             
-            // Audio visualizer is now initialized automatically by the module
+            // Initialize AudioManager
+            try {
+                console.log('Creating AudioManager...');
+                this.audioManager = new AudioManager();
+                console.log('✓ AudioManager created successfully');
+            } catch (error) {
+                console.error('✗ Failed to create AudioManager:', error);
+                throw error;
+            }
+            
+            // Initialize UIManager
+            try {
+                console.log('Getting UIManager...');
+                // Wait for UI modules to be loaded
+                if (!window.uiManager) {
+                    throw new Error('UIManager not yet loaded. Waiting for UI modules...');
+                }
+                this.uiManager = window.uiManager;
+                console.log('✓ UIManager obtained:', this.uiManager);
+            } catch (error) {
+                console.error('✗ Failed to get UIManager:', error);
+                throw error;
+            }
+            
+            // Initialize CombatUI
+            try {
+                console.log('Creating CombatUI...');
+                if (!this.uiManager) {
+                    throw new Error('UIManager not available for CombatUI');
+                }
+                this.combatUI = new CombatUI(this.uiManager);
+                window.combatUI = this.combatUI;
+                console.log('✓ CombatUI created successfully');
+            } catch (error) {
+                console.error('✗ Failed to create CombatUI:', error);
+                throw error;
+            }
+            
+            // Initialize audio visualizer
+            try {
+                if (this.uiManager && this.uiManager.audioVisualizer) {
+                    console.log('✓ Audio visualizer initialized');
+                }
+            } catch (error) {
+                console.error('✗ Failed to initialize audio visualizer:', error);
+                // Non-critical error, continue
+            }
             
             // Generate initial space environment
-            this.generateSpaceEnvironment();
+            try {
+                this.generateSpaceEnvironment();
+                console.log('✓ Space environment generated');
+            } catch (error) {
+                console.error('✗ Failed to generate space environment:', error);
+                // Non-critical error, continue
+            }
             
             // Start render loop
-            this.startRenderLoop();
+            try {
+                this.startRenderLoop();
+                console.log('✓ Render loop started');
+            } catch (error) {
+                console.error('✗ Failed to start render loop:', error);
+                throw error;
+            }
             
-            console.log('GameEngine.init() completed successfully');
+            console.log('✓ GameEngine.init() completed successfully');
         } catch (error) {
-            console.error('Error in GameEngine.init():', error);
+            console.error('✗ Critical error in GameEngine.init():', error);
+            
+            // Show error to user
+            const loadingText = document.querySelector('.loading-text');
+            if (loadingText) {
+                loadingText.textContent = 'Error initializing game. Please refresh the page.';
+                loadingText.style.color = 'var(--danger-color)';
+            }
+            
             throw error;
         }
     }

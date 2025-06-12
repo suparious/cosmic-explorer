@@ -124,28 +124,108 @@ export class ModalManager {
         const modal = document.getElementById('choice-modal');
         const titleEl = document.getElementById('choice-title');
         const choiceList = document.getElementById('choice-list');
+        const modalFooter = modal?.querySelector('.modal-footer');
         
         if (!modal || !titleEl || !choiceList) return;
         
-        // Set title
-        titleEl.textContent = title;
+        // Validate choices array
+        if (!Array.isArray(choices) || choices.length === 0) {
+            console.error('Invalid choices array:', choices);
+            // Show error message instead of empty modal
+            titleEl.textContent = 'Error';
+            choiceList.innerHTML = '<p style="color: var(--danger-color); text-align: center;">No choices available. Please try again.</p>';
+            if (modalFooter) modalFooter.style.display = 'block';
+        } else {
+            // Set title
+            titleEl.textContent = title;
+            
+            // Clear previous choices
+            choiceList.innerHTML = '';
+            
+            // Hide footer for normal choices
+            if (modalFooter) modalFooter.style.display = 'none';
+            
+            // Add choices
+            choices.forEach((choice, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'choice-btn';
+                btn.textContent = `${index + 1}. ${choice}`;
+                btn.onclick = () => {
+                    this.hideChoiceModal();
+                    if (callback) callback(index + 1);
+                };
+                choiceList.appendChild(btn);
+            });
+        }
         
-        // Clear previous choices
-        choiceList.innerHTML = '';
-        
-        // Add choices
-        choices.forEach((choice, index) => {
-            const btn = document.createElement('button');
-            btn.className = 'choice-btn';
-            btn.textContent = `${index + 1}. ${choice}`;
-            btn.onclick = () => {
-                this.hideChoiceModal();
-                callback(index + 1);
-            };
-            choiceList.appendChild(btn);
-        });
+        // Set up close handlers
+        this.setupChoiceModalHandlers(modal, callback);
         
         this.trackModal(modal);
+    }
+    
+    /**
+     * Set up event handlers for the choice modal
+     * @param {HTMLElement} modal - The modal element
+     * @param {Function} callback - The callback function
+     */
+    setupChoiceModalHandlers(modal, callback) {
+        // Remove any existing handlers
+        this.cleanupChoiceModalHandlers();
+        
+        // Close button handler
+        const closeBtn = modal.querySelector('.modal-close');
+        if (closeBtn) {
+            this._choiceCloseHandler = () => this.hideChoiceModal();
+            closeBtn.addEventListener('click', this._choiceCloseHandler);
+        }
+        
+        // Backdrop click handler
+        const backdrop = modal.querySelector('.modal-backdrop');
+        if (backdrop) {
+            this._choiceBackdropHandler = (e) => {
+                if (e.target === backdrop) {
+                    this.hideChoiceModal();
+                }
+            };
+            backdrop.addEventListener('click', this._choiceBackdropHandler);
+        }
+        
+        // ESC key handler
+        this._choiceEscHandler = (e) => {
+            if (e.key === 'Escape' && this.activeModals.includes(modal)) {
+                e.preventDefault();
+                this.hideChoiceModal();
+            }
+        };
+        document.addEventListener('keydown', this._choiceEscHandler);
+    }
+    
+    /**
+     * Clean up choice modal event handlers
+     */
+    cleanupChoiceModalHandlers() {
+        const modal = document.getElementById('choice-modal');
+        if (!modal) return;
+        
+        const closeBtn = modal.querySelector('.modal-close');
+        const backdrop = modal.querySelector('.modal-backdrop');
+        
+        if (closeBtn && this._choiceCloseHandler) {
+            closeBtn.removeEventListener('click', this._choiceCloseHandler);
+        }
+        
+        if (backdrop && this._choiceBackdropHandler) {
+            backdrop.removeEventListener('click', this._choiceBackdropHandler);
+        }
+        
+        if (this._choiceEscHandler) {
+            document.removeEventListener('keydown', this._choiceEscHandler);
+        }
+        
+        this._choiceCloseHandler = null;
+        this._choiceBackdropHandler = null;
+        this._choiceEscHandler = null;
     }
     
     /**
@@ -153,6 +233,7 @@ export class ModalManager {
      */
     hideChoiceModal() {
         const modal = document.getElementById('choice-modal');
+        this.cleanupChoiceModalHandlers();
         this.hideModal(modal, false);
     }
 }
