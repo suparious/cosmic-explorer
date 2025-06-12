@@ -1,6 +1,6 @@
 ---
 title: Music System
-tags: [frontend, audio, music, procedural-generation]
+tags: [frontend, audio, music, procedural-generation, modular]
 created: 2025-06-11
 updated: 2025-06-11
 status: active
@@ -10,29 +10,43 @@ status: active
 
 ## Overview
 
-The Cosmic Explorer music system is a sophisticated procedural audio engine that generates dynamic, multi-layered soundscapes in real-time. Using only the Web Audio API with no external sound files, it creates immersive Eve Online-style ambient music that responds to game state changes.
+The Cosmic Explorer music system is a sophisticated procedural audio engine that generates dynamic, multi-layered soundscapes in real-time. Recently refactored into a modular architecture, it uses only the Web Audio API with no external sound files to create immersive Eve Online-style ambient music that responds to game state changes.
 
 **Key Features:**
 - 5 dynamic music tracks (exploration, station, danger, combat, pod)
-- 12-15 simultaneous layers per track
+- 40+ modular layer implementations
 - Real-time procedural generation
 - Smooth crossfades between tracks
 - Advanced effects processing
 - Game state-responsive adaptation
+- Modular, extensible architecture
 
 Parent: [[components/frontend/index|Frontend Components]]
 
 ## Architecture
 
-### System Components
+### Modular System Structure
 
 ```
-MusicEngine
-├── Track System (5 tracks)
-├── Layer Generators (23 types)
-├── Chord Progression Engine
-├── Effects Chain
-└── State Manager
+/static/js/audio/
+├── index.js                    # Main entry point (exports MusicEngine)
+├── MusicEngine.js             # Core orchestrator class
+├── constants/
+│   ├── musicalData.js         # Musical constants (chords, patterns, scales)
+│   └── trackDefinitions.js    # Track configurations
+├── effects/
+│   └── EffectsChain.js        # Audio effects processor
+├── layers/
+│   ├── BaseLayer.js           # Abstract base class for all layers
+│   ├── LayerFactory.js        # Factory for creating layers
+│   ├── base/                  # Basic audio layers (5 types)
+│   ├── atmospheric/           # Atmospheric effects (7 types)
+│   ├── mechanical/            # Mechanical sounds (4 types)
+│   ├── musical/               # Musical elements (9 types)
+│   └── tension/               # Tension/warning sounds (10 types)
+└── utils/
+    ├── audioHelpers.js        # Utility functions
+    └── musicTheory.js         # Music theory helpers
 ```
 
 ### Signal Flow
@@ -111,45 +125,57 @@ Key elements:
 
 ## Layer Types
 
-The music engine supports 23 unique layer generators:
+The music engine supports 40+ unique layer implementations organized into categories:
 
-### Foundation Layers
-- `drone` - Sustained bass tones
-- `sub_bass` - Deep frequency foundation
-- `pad` - Harmonic chord pads
-- `harmonic` - Rich harmonic series
+### Base Layers (5 types)
+Foundation elements providing the core musical structure:
+- **DroneLayer** - Fundamental sine wave drones
+- **PadLayer** - Harmonic pad sounds with chord progression support
+- **SubBassLayer** - Deep sub-bass frequencies
+- **HeartbeatLayer** - Rhythmic heartbeat sounds
+- **BreathingLayer** - Breathing rhythm effects
 
-### Melodic Layers
-- `arpeggio` - Dynamic note patterns
-- `bass_line` - Rhythmic bass sequences
-- `lead` - Melodic top lines
+### Atmospheric Layers (7 types)
+Ambient and environmental sounds:
+- **ShimmerLayer** - High-frequency ethereal shimmers
+- **WhisperLayer** - Filtered noise whispers
+- **BreathLayer** - Breathing sound effects
+- **AirFlowLayer** - Ambient air circulation
+- **CommChatterLayer** - Radio communication chatter
+- **StaticLayer** - White noise static
+- **RadioStaticLayer** - Radio interference static
 
-### Atmospheric Layers
-- `shimmer` - High frequency sparkle
-- `whisper` - Ethereal atmosphere
-- `breath` - Organic ambience
-- `air_flow` - Environmental sound
+### Mechanical Layers (4 types)
+Industrial and technological sounds:
+- **MechanicalLayer** - Industrial humming sounds
+- **HydraulicLayer** - Hydraulic hiss and clunks
+- **MetalStressLayer** - Creaking metal sounds
+- **SystemBeepLayer** - Computer system beeps
 
-### Mechanical Layers
-- `hydraulic` - Station machinery
-- `comm_chatter` - Radio communications
-- `pulse` - Rhythmic warnings
-- `radar_sweep` - Scanning effects
+### Musical Layers (9 types)
+Melodic and harmonic elements:
+- **HarmonicLayer** - Rich harmonic series
+- **ArpeggioLayer** - Melodic arpeggiated patterns
+- **BassLineLayer** - Rhythmic bass patterns
+- **ChimeLayer** - Bell-like chimes
+- **LeadLayer** - Melodic lead lines
+- **RhythmLayer** - Kick drum rhythms
+- **PercussionLayer** - Full drum patterns
+- **PowerChordLayer** - Massive power chords
+- **BrassStabLayer** - Punchy brass stabs
 
-### Combat Layers
-- `percussion` - Drum patterns
-- `power_chord` - Distorted chords
-- `brass_stab` - Orchestral hits
-- `explosion_rumble` - Deep impacts
-- `siren` - Warning sounds
-
-### Emergency Layers
-- `alarm` - Alert sounds
-- `breathing` - Life support
-- `system_beep` - Computer sounds
-- `radio_static` - Communication noise
-- `metal_stress` - Hull creaking
-- `anxiety_pulse` - Psychological tension
+### Tension Layers (10 types)
+Warning and emergency sounds:
+- **PulseLayer** - Rhythmic pulsing
+- **DissonanceLayer** - Dissonant intervals
+- **WarningLayer** - Warning sirens
+- **AlarmLayer** - Rapid alarm beeps
+- **ClusterLayer** - Dissonant note clusters
+- **RadarSweepLayer** - Radar sweep sounds
+- **TensionRiserLayer** - Building tension sounds
+- **AnxietyPulseLayer** - Unsettling low pulses
+- **SirenLayer** - Emergency sirens
+- **ExplosionRumbleLayer** - Deep explosion rumbles
 
 ## Chord Progression System
 
@@ -286,9 +312,67 @@ window.audioManager.musicEngine.activeLayers.forEach((l,id) =>
 
 ## Technical Implementation
 
+### Modular Architecture Benefits
+
+1. **Maintainability**: Each layer is 50-150 lines instead of part of a 3000+ line file
+2. **Extensibility**: Adding new layers is straightforward - create class, register in factory
+3. **Testability**: Individual components can be tested in isolation
+4. **Code Organization**: Related functionality grouped logically
+5. **Backward Compatibility**: Existing code continues to work without changes
+
+### Usage Patterns
+
+```javascript
+// Legacy approach (still supported)
+const musicEngine = new window.MusicEngine();
+await musicEngine.init();
+musicEngine.play('exploration');
+
+// Modern ES6 module approach
+import { MusicEngine } from '/static/js/audio/index.js';
+const musicEngine = new MusicEngine();
+await musicEngine.init();
+musicEngine.play('exploration');
+```
+
+### Adding New Layers
+
+1. Create a new layer class extending BaseLayer:
+```javascript
+import BaseLayer from '../BaseLayer.js';
+
+export default class CustomLayer extends BaseLayer {
+    constructor(audioContext, config) {
+        super(audioContext, config);
+        // Initialize layer-specific properties
+    }
+    
+    createNodes() {
+        // Set up audio nodes
+    }
+    
+    play() {
+        // Start the layer
+    }
+    
+    stop() {
+        // Clean up
+    }
+}
+```
+
+2. Register in LayerFactory:
+```javascript
+import CustomLayer from './custom/CustomLayer.js';
+// Add to the factory's layer map
+```
+
 ### Key Files
-- `/static/js/musicEngine.js` - Core music engine
-- `/static/js/audio.js` - Audio manager integration
+- `/static/js/audio/index.js` - Main module entry point
+- `/static/js/audio/MusicEngine.js` - Core orchestrator
+- `/static/js/audio/layers/BaseLayer.js` - Base class for all layers
+- `/static/js/audio/layers/LayerFactory.js` - Layer instantiation
+- `/static/js/musicEngine.js` - Legacy compatibility wrapper
 
 ### Dependencies
 - Web Audio API

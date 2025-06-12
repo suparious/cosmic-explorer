@@ -2,7 +2,7 @@
 title: Archive Index
 tags: [archive, index, history]
 created: 2025-06-10
-updated: 2025-06-10
+updated: 2025-06-11
 status: active
 ---
 
@@ -33,6 +33,12 @@ Original implementation documentation:
 - Music system implementation
 - Visual event system
 
+### 🔧 [[refactoring/index|Refactoring Documentation]]
+Code modernization and modularization records:
+- UI modularization (15 modules from monolithic file)
+- Music engine modularization (40+ layers from 3000+ line file)
+- Migration guides and summaries
+
 ### 🏗️ [[original-architecture.md|Original Architecture]]
 Initial system design and structure before modularization.
 
@@ -40,9 +46,10 @@ Initial system design and structure before modularization.
 
 | Category | Count | Last Updated |
 |----------|-------|--------------|
-| Status Updates | 16 | 2025-06-11 |
+| Status Updates | 17 | 2025-06-11 |
 | Bug Fixes | 7 | 2025-06-10 |
 | Feature Docs | 11 | 2025-06-11 |
+| Refactoring Docs | 3 | 2025-06-11 |
 
 ## 🔍 Using the Archive
 
@@ -55,6 +62,7 @@ Initial system design and structure before modularization.
 - Status updates show project progression
 - Bug fixes reveal problem-solving approaches
 - Feature docs contain implementation details
+- Refactoring docs show architectural improvements
 
 ### Extracting for Current Use
 When updating current documentation:
@@ -71,6 +79,7 @@ When updating current documentation:
 - Historical implementation notes
 - Bug fix summaries
 - Development milestones
+- Refactoring artifacts
 
 ### What Doesn't Belong
 - Current documentation
@@ -92,15 +101,16 @@ When updating current documentation:
 - `#bug-fix` - Bug fix records
 - `#milestone` - Project milestones
 - `#implementation` - Original implementations
+- `#refactoring` - Code modernization records
 
 ## 🔗 Quick Access
 
 ### Recent Additions
-- [[status-updates/2025-06/2025-06-10-documentation-update-summary|Documentation Update Summary]] - Comprehensive docs overhaul
-- [[status-updates/2025-06-11-documentation-housekeeping|Documentation Housekeeping]] - Final cleanup  
+- [[status-updates/2025-06-11-music-engine-modularization|Music Engine Modularization]] - 40+ modular layers
+- [[status-updates/2025-06-11-ui-modularization-documentation|UI Modularization Documentation]] - 15 UI modules
 - [[status-updates/2025-06-11-star-map-implementation|Star Map Implementation]] - Click-to-travel feature
-- [[feature-docs/2025-01-music-enhancements|Music Enhancements]] - Detailed music features
-- [[feature-docs/sound-system-enhancement-guide|Sound Enhancement Guide]] - Sound implementation
+- [[refactoring/2025-06-11-music-engine-refactoring-summary|Music Engine Refactoring Summary]] - Technical details
+- [[refactoring/2025-06-11-music-engine-migration-guide|Music Engine Migration Guide]] - Implementation guide
 
 ### Important Milestones
 - [[status-updates/web-ui-complete|Web UI Complete]] - Major transformation

@@ -31,7 +31,7 @@ Technical documentation for system components
 - [[components/frontend/index|Frontend Architecture]] - JavaScript UI and rendering
 - [[components/frontend/ui-modules|UI Module Architecture]] ⭐ - Modular UI system (NEW)
 - [[components/frontend/audio-system|Audio System]] - Procedural sound effects
-- [[components/frontend/music-system|Music System]] - Dynamic music engine
+- [[components/frontend/music-system|Music System]] ⭐ - Modular music engine (40+ layers)
 - [[components/game-systems/index|Game Systems]] - Core gameplay mechanics
 
 ### 📋 [[References]]
@@ -71,7 +71,8 @@ Historical documentation and status updates
 | Game Engine | ✅ Active | [[components/backend/game-engine]] |
 | Save System | ✅ Working | [[components/game-systems/save-system]] |
 | Pod System | ✅ Complete | [[components/game-systems/pod-augmentations]] |
-| Music Engine | ✅ Implemented | [[components/frontend/music-system]] |
+| Music Engine | ✅ Modularized | [[components/frontend/music-system]] |
+| UI Modules | ✅ Refactored | [[components/frontend/ui-modules]] |
 | Sound Effects | ✅ Complete | [[components/frontend/audio-system]] |
 | Star Map | 🚧 Partial | [[components/frontend/star-map]] |
 | Multiplayer | ❌ Planned | [[references/roadmap#multiplayer]] |
